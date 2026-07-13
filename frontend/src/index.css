@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  /* Vert institutionnel, dérivé du sceau de l'université (logo réel) */
+  --color-brand-50: #f1f7f4;
+  --color-brand-100: #dcece3;
+  --color-brand-200: #b9d9c8;
+  --color-brand-300: #8cbfa7;
+  --color-brand-400: #5d9c81;
+  --color-brand-500: #3d7d63;
+  --color-brand-600: #2b6249;
+  --color-brand-700: #204d3a;
+  --color-brand-800: #1a3d2e;
+  --color-brand-900: #143024;
+
+  /* Bleu UFR SJAP (logo réel), utilisé avec parcimonie comme second accent */
+  --color-accent-50: #eef2fb;
+  --color-accent-100: #dbe4f5;
+  --color-accent-500: #4472c4;
+  --color-accent-600: #3a5fa8;
+  --color-accent-700: #2f4c87;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+body {
+  @apply text-slate-900 antialiased;
+  background-color: #faf8f4;
+}
+
+/* Chiffres alignés (montants, numéros de reçu) — cohérence visuelle sur
+   toutes les données tabulaires de l'application. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Signature visuelle : le pointillé "carnet de reçus" qui revient sous les
+   totaux et en-têtes clés, en écho direct au reçu papier reproduit dans l'app. */
+.rule-perforee {
+  border-bottom: 1px dashed var(--color-brand-200);
+}
+
+@media print {
+  aside,
+  header {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}
