@@ -1,0 +1,324 @@
+// Schéma Prisma — ERP Universitaire (mono-établissement)
+// Cible : PostgreSQL. Voir README pour le lancement local (docker-compose fourni).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// Utilisateurs & rôles
+// ------------------------------------------------------------------
+enum RoleCode {
+  COMPTABILITE
+  ADMIN
+}
+
+model Role {
+  id      String   @id @default(uuid())
+  code    RoleCode @unique
+  libelle String
+  users   User[]
+
+  @@map("roles")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  nom            String
+  prenom         String
+  email          String   @unique
+  motDePasseHash String
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  // Traçabilité : opérations effectuées par cet utilisateur
+  inscriptions Inscription[]     @relation("AgentInscription")
+  paiements    Paiement[]        @relation("AgentPaiement")
+  recettes     EcritureRecette[] @relation("AgentRecette")
+  depenses     EcritureDepense[] @relation("AgentDepense")
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  action        String   // create | update | delete | annulation ...
+  ressourceType String   // paiement | inscription | ep703 | ep704 ...
+  ressourceId   String
+  detailsJson   Json?
+  createdAt     DateTime @default(now())
+
+  @@index([ressourceType, ressourceId])
+  @@map("audit_log")
+}
+
+// ------------------------------------------------------------------
+// Étudiants
+// ------------------------------------------------------------------
+enum Sexe {
+  M
+  F
+}
+
+model Etudiant {
+  id                          String   @id @default(uuid())
+  matricule                   String   @unique
+  nom                         String
+  prenom                      String
+  sexe                        Sexe
+  dateNaissance               DateTime
+  lieuNaissance               String?
+  telephone                   String?
+  email                       String?
+  adresse                     String?
+  photoUrl                    String?
+  informationsComplementaires String?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  inscriptions Inscription[]
+  paiements    Paiement[]
+
+  @@map("etudiants")
+}
+
+// ------------------------------------------------------------------
+// Filières, niveaux, années universitaires
+// ------------------------------------------------------------------
+model Filiere {
+  id    String  @id @default(uuid())
+  nom   String
+  code  String  @unique
+  actif Boolean @default(true)
+
+  filiereNiveaux FiliereNiveau[]
+  inscriptions   Inscription[]
+  reglesPaiement ReglePaiement[]
+
+  @@map("filieres")
+}
+
+model Niveau {
+  id      String @id @default(uuid())
+  code    String @unique // L1, L2, L3, M1, M2
+  libelle String
+
+  filiereNiveaux FiliereNiveau[]
+  inscriptions   Inscription[]
+  reglesPaiement ReglePaiement[]
+
+  @@map("niveaux")
+}
+
+model AnneeUniversitaire {
+  id        String   @id @default(uuid())
+  libelle   String   // "2025-2026"
+  dateDebut DateTime
+  dateFin   DateTime
+  active    Boolean  @default(false)
+
+  filiereNiveaux FiliereNiveau[]
+  inscriptions   Inscription[]
+  reglesPaiement ReglePaiement[]
+
+  @@map("annees_universitaires")
+}
+
+// Table de jonction : quelles filières ouvrent quel niveau pour quelle année
+model FiliereNiveau {
+  id                   String             @id @default(uuid())
+  filiereId            String
+  filiere              Filiere            @relation(fields: [filiereId], references: [id])
+  niveauId             String
+  niveau               Niveau             @relation(fields: [niveauId], references: [id])
+  anneeUniversitaireId String
+  anneeUniversitaire   AnneeUniversitaire @relation(fields: [anneeUniversitaireId], references: [id])
+  actif                Boolean            @default(true)
+
+  @@unique([filiereId, niveauId, anneeUniversitaireId])
+  @@map("filiere_niveaux")
+}
+
+// ------------------------------------------------------------------
+// Inscriptions
+// ------------------------------------------------------------------
+enum StatutInscription {
+  EN_COURS
+  VALIDEE
+  ANNULEE
+  TRANSFEREE
+}
+
+model Inscription {
+  id                   String             @id @default(uuid())
+  numeroInscription    String             @unique
+  etudiantId           String
+  etudiant             Etudiant           @relation(fields: [etudiantId], references: [id])
+  filiereId            String
+  filiere              Filiere            @relation(fields: [filiereId], references: [id])
+  niveauId             String
+  niveau               Niveau             @relation(fields: [niveauId], references: [id])
+  anneeUniversitaireId String
+  anneeUniversitaire   AnneeUniversitaire @relation(fields: [anneeUniversitaireId], references: [id])
+  statut               StatutInscription  @default(EN_COURS)
+  dateInscription      DateTime           @default(now())
+  montantTotalDu       Decimal            @db.Decimal(12, 2)
+
+  agentId String
+  agent   User   @relation("AgentInscription", fields: [agentId], references: [id])
+
+  echeances Echeance[]
+  paiements Paiement[]
+
+  createdAt DateTime @default(now())
+
+  @@map("inscriptions")
+}
+
+// ------------------------------------------------------------------
+// Règles de paiement configurables
+// ------------------------------------------------------------------
+model ReglePaiement {
+  id                     String             @id @default(uuid())
+  filiereId              String?
+  filiere                Filiere?           @relation(fields: [filiereId], references: [id])
+  niveauId               String?
+  niveau                 Niveau?            @relation(fields: [niveauId], references: [id])
+  anneeUniversitaireId   String
+  anneeUniversitaire     AnneeUniversitaire @relation(fields: [anneeUniversitaireId], references: [id])
+  montantTotal           Decimal            @db.Decimal(12, 2)
+  pourcentageInscription Int                // ex: 60
+  nombreEcheances        Int
+  createdAt              DateTime           @default(now())
+
+  @@map("regles_paiement")
+}
+
+enum StatutEcheance {
+  A_PAYER
+  PARTIEL
+  SOLDE
+  EN_RETARD
+}
+
+model Echeance {
+  id             String         @id @default(uuid())
+  inscriptionId  String
+  inscription    Inscription    @relation(fields: [inscriptionId], references: [id])
+  numeroEcheance Int
+  montantPrevu   Decimal        @db.Decimal(12, 2)
+  dateLimite     DateTime
+  statut         StatutEcheance @default(A_PAYER)
+
+  @@map("echeances")
+}
+
+// ------------------------------------------------------------------
+// Paiements & reçus
+// ------------------------------------------------------------------
+enum ModePaiement {
+  ESPECES
+  CHEQUE
+  VIREMENT
+  MOBILE_MONEY
+}
+
+enum StatutPaiement {
+  VALIDE
+  ANNULE
+}
+
+model Paiement {
+  id              String         @id @default(uuid())
+  referenceUnique String         @unique
+  inscriptionId   String
+  inscription     Inscription    @relation(fields: [inscriptionId], references: [id])
+  etudiantId      String
+  etudiant        Etudiant       @relation(fields: [etudiantId], references: [id])
+  montant         Decimal        @db.Decimal(12, 2)
+  motif           String
+  modePaiement    ModePaiement
+  datePaiement    DateTime       @default(now())
+  statut          StatutPaiement @default(VALIDE)
+
+  agentId String
+  agent   User   @relation("AgentPaiement", fields: [agentId], references: [id])
+
+  recu    Recu?
+  recette EcritureRecette?
+
+  createdAt DateTime @default(now())
+
+  @@map("paiements")
+}
+
+model Recu {
+  id           String   @id @default(uuid())
+  numeroRecu   String   @unique
+  paiementId   String   @unique
+  paiement     Paiement @relation(fields: [paiementId], references: [id])
+  pdfUrl       String?
+  dateEmission DateTime @default(now())
+
+  @@map("recus")
+}
+
+// ------------------------------------------------------------------
+// Comptabilité : EP703 (recettes) / EP704 (dépenses)
+// EP706 (centralisateur) = vue agrégée calculée, pas de table de saisie
+// ------------------------------------------------------------------
+enum StatutEcriture {
+  VALIDE
+  CONTRE_PASSE
+}
+
+model EcritureRecette {
+  id                    String         @id @default(uuid())
+  numeroBordereau       String         @unique
+  date                  DateTime       @default(now())
+  libelle               String
+  compteDebit           String         @default("565")
+  compteCredit          String         @default("445")
+  montant               Decimal        @db.Decimal(12, 2)
+  paiementId            String?        @unique
+  paiement              Paiement?      @relation(fields: [paiementId], references: [id])
+  pieceJustificativeUrl String?
+  statut                StatutEcriture @default(VALIDE)
+
+  agentId String
+  agent   User   @relation("AgentRecette", fields: [agentId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("ep703_recettes")
+}
+
+model EcritureDepense {
+  id              String         @id @default(uuid())
+  numeroCheque    String         @unique
+  date            DateTime       @default(now())
+  libelle         String
+  compteDebit     String         @default("445")
+  compteCredit    String         @default("565")
+  montant         Decimal        @db.Decimal(12, 2)
+  justificatifUrl String?
+  statut          StatutEcriture @default(VALIDE)
+
+  agentId String
+  agent   User   @relation("AgentDepense", fields: [agentId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("ep704_depenses")
+}
