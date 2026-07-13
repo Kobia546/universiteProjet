@@ -1,6 +1,7 @@
 # --- Étape 1 : build ---
 FROM node:20-alpine AS build
 WORKDIR /app
+RUN apk add --no-cache openssl
 
 COPY package*.json ./
 RUN npm ci
@@ -13,6 +14,7 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache openssl
 
 COPY package*.json ./
 RUN npm ci --omit=dev
@@ -23,4 +25,5 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 3000
 
+# Applique les migrations en attente puis démarre l'API.
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
