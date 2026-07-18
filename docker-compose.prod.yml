@@ -1,0 +1,58 @@
+# Docker Compose de PRODUCTION — pour héberger l'appli sur un seul VPS.
+#
+# Usage :
+#   1. Copier .env.prod.example vers .env.prod et remplir les vraies valeurs
+#   2. docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Si tu préfères une base de données managée (recommandé pour la vraie
+# haute disponibilité — voir le README section "Mise en production"),
+# retire le service `postgres` ci-dessous et pointe DATABASE_URL vers ton
+# fournisseur managé à la place.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - erp_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      PORT: 3000
+      FRONTEND_URL: ${FRONTEND_URL}
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  erp_pg_data:
