@@ -8,8 +8,10 @@ async function bootstrap() {
 
   app.use(helmet());
 
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  console.log(`CORS autorisé pour l'origine : "${frontendUrl}"`);
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: frontendUrl,
     credentials: true,
   });
 

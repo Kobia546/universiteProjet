@@ -14,6 +14,8 @@ import { AccountingModule } from './accounting/accounting.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AuditModule } from './audit/audit.module';
+import { HealthModule } from './health/health.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { AuditModule } from './audit/audit.module';
     PaymentsModule,
     DashboardModule,
     AuditModule,
+    HealthModule,
+    OnboardingModule,
   ],
   providers: [
     {

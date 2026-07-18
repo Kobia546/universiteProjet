@@ -1,5 +1,5 @@
 import { IsDateString, IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
-import { Sexe } from '@prisma/client';
+import { Sexe, TypeEtudiant } from '@prisma/client';
 
 export class CreateEtudiantDto {
   @IsString()
@@ -12,6 +12,10 @@ export class CreateEtudiantDto {
 
   @IsEnum(Sexe, { message: 'Le sexe doit être M ou F' })
   sexe: Sexe;
+
+  @IsOptional()
+  @IsEnum(TypeEtudiant, { message: 'Le type doit être ETUDIANT ou TRAVAILLEUR' })
+  type?: TypeEtudiant;
 
   @IsDateString()
   dateNaissance: string;

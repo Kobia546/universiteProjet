@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class EcheancesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /**
    * Recalcule le statut de chaque échéance d'une inscription en fonction
@@ -14,9 +18,14 @@ export class EcheancesService {
    * Utilisé après tout paiement/annulation ET après toute modification
    * manuelle de l'échéancier (montant, date, ajout, suppression), puisque
    * les comptables peuvent librement ajuster les échéances.
+   *
+   * Fait aussi passer automatiquement l'inscription en "VALIDEE" dès que
+   * tout est payé, et la fait revenir en "EN_COURS" si un paiement est
+   * annulé après coup et qu'elle n'est plus soldée — sans jamais toucher
+   * aux statuts ANNULEE ou TRANSFEREE, qui restent une décision manuelle.
    */
   async recalculer(inscriptionId: string) {
-    const [echeances, paiementsValides] = await Promise.all([
+    const [echeances, paiementsValides, inscription] = await Promise.all([
       this.prisma.echeance.findMany({
         where: { inscriptionId },
         orderBy: { numeroEcheance: 'asc' },
@@ -24,6 +33,7 @@ export class EcheancesService {
       this.prisma.paiement.findMany({
         where: { inscriptionId, statut: 'VALIDE' },
       }),
+      this.prisma.inscription.findUnique({ where: { id: inscriptionId } }),
     ]);
 
     const totalPaye = paiementsValides.reduce((somme, p) => somme + Number(p.montant), 0);
@@ -46,5 +56,30 @@ export class EcheancesService {
     });
 
     await Promise.all(updates);
+
+    if (!inscription) return;
+
+    const estSoldee = totalPaye >= Number(inscription.montantTotalDu);
+
+    if (estSoldee && inscription.statut === 'EN_COURS') {
+      await this.prisma.inscription.update({
+        where: { id: inscriptionId },
+        data: { statut: 'VALIDEE' },
+      });
+      await this.auditService.enregistrer({
+        userId: paiementsValides[paiementsValides.length - 1]?.agentId ?? inscription.agentId,
+        action: 'inscription_soldee',
+        ressourceType: 'inscription',
+        ressourceId: inscriptionId,
+        details: { montantTotalDu: Number(inscription.montantTotalDu), totalPaye },
+      });
+    } else if (!estSoldee && inscription.statut === 'VALIDEE') {
+      // Un paiement a été annulé après coup : l'inscription n'est plus
+      // entièrement soldée, on revient à "en cours".
+      await this.prisma.inscription.update({
+        where: { id: inscriptionId },
+        data: { statut: 'EN_COURS' },
+      });
+    }
   }
 }

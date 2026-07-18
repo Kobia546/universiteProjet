@@ -1,8 +1,17 @@
 // Schéma Prisma — ERP Universitaire (mono-établissement)
-// Cible : PostgreSQL. Voir README pour le lancement local (docker-compose fourni).
+// Cible : PostgreSQL.
+//
+// Terminologie (importante, ne correspond pas au vocabulaire "générique") :
+// - Filiere  = le niveau d'études (L1, L2, L3, M1, M2)
+// - Matiere  = un module/cours enseigné (ex: Droit des Affaires) — un
+//              simple catalogue informatif, une matière peut être
+//              enseignée dans plusieurs filières (niveaux).
+// - Une inscription se fait au niveau d'une Filière entière ; les matières
+//   ne sont pas sélectionnées individuellement par l'étudiant.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -39,7 +48,6 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  // Traçabilité : opérations effectuées par cet utilisateur
   inscriptions Inscription[]     @relation("AgentInscription")
   paiements    Paiement[]        @relation("AgentPaiement")
   recettes     EcritureRecette[] @relation("AgentRecette")
@@ -53,8 +61,8 @@ model AuditLog {
   id            String   @id @default(uuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id])
-  action        String   // create | update | delete | annulation ...
-  ressourceType String   // paiement | inscription | ep703 | ep704 ...
+  action        String
+  ressourceType String
   ressourceId   String
   detailsJson   Json?
   createdAt     DateTime @default(now())
@@ -71,12 +79,18 @@ enum Sexe {
   F
 }
 
+enum TypeEtudiant {
+  ETUDIANT
+  TRAVAILLEUR
+}
+
 model Etudiant {
-  id                          String   @id @default(uuid())
-  matricule                   String   @unique
+  id                          String       @id @default(uuid())
+  matricule                   String       @unique
   nom                         String
   prenom                      String
   sexe                        Sexe
+  type                        TypeEtudiant @default(ETUDIANT)
   dateNaissance               DateTime
   lieuNaissance               String?
   telephone                   String?
@@ -84,8 +98,8 @@ model Etudiant {
   adresse                     String?
   photoUrl                    String?
   informationsComplementaires String?
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
 
   inscriptions Inscription[]
   paiements    Paiement[]
@@ -94,60 +108,70 @@ model Etudiant {
 }
 
 // ------------------------------------------------------------------
-// Filières, niveaux, années universitaires
+// Filières (= niveaux L1-M2) & Matières (catalogue informatif)
 // ------------------------------------------------------------------
 model Filiere {
-  id    String  @id @default(uuid())
-  nom   String
-  code  String  @unique
-  actif Boolean @default(true)
+  id      String @id @default(uuid())
+  code    String @unique // L1, L2, L3, M1, M2
+  libelle String
 
-  filiereNiveaux FiliereNiveau[]
+  matieres       FiliereMatiere[]
+  anneesOuvertes FiliereAnnee[]
   inscriptions   Inscription[]
   reglesPaiement ReglePaiement[]
 
   @@map("filieres")
 }
 
-model Niveau {
-  id      String @id @default(uuid())
-  code    String @unique // L1, L2, L3, M1, M2
-  libelle String
+model Matiere {
+  id    String  @id @default(uuid())
+  nom   String
+  code  String  @unique
+  actif Boolean @default(true)
 
-  filiereNiveaux FiliereNiveau[]
-  inscriptions   Inscription[]
-  reglesPaiement ReglePaiement[]
+  filieres FiliereMatiere[]
 
-  @@map("niveaux")
+  @@map("matieres")
+}
+
+// Catalogue : quelles matières sont enseignées dans quelle filière (niveau).
+// Non spécifique à une année — purement informatif.
+model FiliereMatiere {
+  id        String  @id @default(uuid())
+  filiereId String
+  filiere   Filiere @relation(fields: [filiereId], references: [id])
+  matiereId String
+  matiere   Matiere @relation(fields: [matiereId], references: [id])
+
+  @@unique([filiereId, matiereId])
+  @@map("filiere_matieres")
 }
 
 model AnneeUniversitaire {
   id        String   @id @default(uuid())
-  libelle   String   // "2025-2026"
+  libelle   String
   dateDebut DateTime
   dateFin   DateTime
   active    Boolean  @default(false)
 
-  filiereNiveaux FiliereNiveau[]
-  inscriptions   Inscription[]
-  reglesPaiement ReglePaiement[]
+  filieresOuvertes FiliereAnnee[]
+  inscriptions     Inscription[]
+  reglesPaiement   ReglePaiement[]
 
   @@map("annees_universitaires")
 }
 
-// Table de jonction : quelles filières ouvrent quel niveau pour quelle année
-model FiliereNiveau {
+// Ouverture d'une filière (niveau) pour une année universitaire donnée.
+model FiliereAnnee {
   id                   String             @id @default(uuid())
   filiereId            String
   filiere              Filiere            @relation(fields: [filiereId], references: [id])
-  niveauId             String
-  niveau               Niveau             @relation(fields: [niveauId], references: [id])
   anneeUniversitaireId String
   anneeUniversitaire   AnneeUniversitaire @relation(fields: [anneeUniversitaireId], references: [id])
   actif                Boolean            @default(true)
 
-  @@unique([filiereId, niveauId, anneeUniversitaireId])
-  @@map("filiere_niveaux")
+  @@unique([filiereId, anneeUniversitaireId])
+  @@map("filiere_annees")
 }
 
 // ------------------------------------------------------------------
@@ -167,8 +191,6 @@ model Inscription {
   etudiant             Etudiant           @relation(fields: [etudiantId], references: [id])
   filiereId            String
   filiere              Filiere            @relation(fields: [filiereId], references: [id])
-  niveauId             String
-  niveau               Niveau             @relation(fields: [niveauId], references: [id])
   anneeUniversitaireId String
   anneeUniversitaire   AnneeUniversitaire @relation(fields: [anneeUniversitaireId], references: [id])
   statut               StatutInscription  @default(EN_COURS)
@@ -187,18 +209,17 @@ model Inscription {
 }
 
 // ------------------------------------------------------------------
-// Règles de paiement configurables
+// Règles de paiement configurables (par filière et/ou type d'étudiant)
 // ------------------------------------------------------------------
 model ReglePaiement {
   id                     String             @id @default(uuid())
   filiereId              String?
   filiere                Filiere?           @relation(fields: [filiereId], references: [id])
-  niveauId               String?
-  niveau                 Niveau?            @relation(fields: [niveauId], references: [id])
+  type                   TypeEtudiant?      // null = s'applique aux deux types
   anneeUniversitaireId   String
   anneeUniversitaire     AnneeUniversitaire @relation(fields: [anneeUniversitaireId], references: [id])
   montantTotal           Decimal            @db.Decimal(12, 2)
-  pourcentageInscription Int                // ex: 60
+  pourcentageInscription Int
   nombreEcheances        Int
   createdAt              DateTime           @default(now())
 
@@ -276,7 +297,6 @@ model Recu {
 
 // ------------------------------------------------------------------
 // Comptabilité : EP703 (recettes) / EP704 (dépenses)
-// EP706 (centralisateur) = vue agrégée calculée, pas de table de saisie
 // ------------------------------------------------------------------
 enum StatutEcriture {
   VALIDE

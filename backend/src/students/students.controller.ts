@@ -25,9 +25,20 @@ export class StudentsController {
   findAll(
     @Query('recherche') recherche?: string,
     @Query('filiereId') filiereId?: string,
-    @Query('niveauId') niveauId?: string,
   ) {
-    return this.studentsService.findAll({ recherche, filiereId, niveauId });
+    return this.studentsService.findAll({ recherche, filiereId });
+  }
+
+  // Déclaré AVANT ':id' pour ne pas être intercepté par la route générique
+  @Get('statut-paiement')
+  findParStatutPaiement(
+    @Query('statut') statut: 'doit' | 'solde',
+    @Query('anneeUniversitaireId') anneeUniversitaireId?: string,
+  ) {
+    return this.studentsService.findParStatutPaiement(
+      statut === 'solde' ? 'solde' : 'doit',
+      anneeUniversitaireId,
+    );
   }
 
   @Get(':id')

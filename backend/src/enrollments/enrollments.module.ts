@@ -9,6 +9,6 @@ import { PaymentRulesModule } from '../payment-rules/payment-rules.module';
   imports: [PaymentRulesModule],
   controllers: [EnrollmentsController],
   providers: [EnrollmentsService, NumeroInscriptionService, EcheancesService],
-  exports: [EcheancesService],
+  exports: [EcheancesService, EnrollmentsService],
 })
 export class EnrollmentsModule {}

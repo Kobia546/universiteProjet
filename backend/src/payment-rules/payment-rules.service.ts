@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { TypeEtudiant } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReglePaiementDto } from './dto/create-regle-paiement.dto';
 import { UpdateReglePaiementDto } from './dto/update-regle-paiement.dto';
@@ -14,7 +15,7 @@ export class PaymentRulesService {
   findAll(anneeUniversitaireId?: string) {
     return this.prisma.reglePaiement.findMany({
       where: anneeUniversitaireId ? { anneeUniversitaireId } : {},
-      include: { filiere: true, niveau: true, anneeUniversitaire: true },
+      include: { filiere: true, anneeUniversitaire: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -32,33 +33,32 @@ export class PaymentRulesService {
   }
 
   /**
-   * Résout la règle de paiement la plus spécifique applicable pour une
-   * inscription donnée : priorité filière+niveau > filière seule >
-   * niveau seul > règle générale (ni filière ni niveau précisés).
+   * Résout la règle de paiement la plus spécifique applicable : priorité
+   * filière+type > filière seule > type seul > règle générale.
    */
   async resoudreRegleApplicable(params: {
     filiereId: string;
-    niveauId: string;
+    type: TypeEtudiant;
     anneeUniversitaireId: string;
   }) {
-    const { filiereId, niveauId, anneeUniversitaireId } = params;
+    const { filiereId, type, anneeUniversitaireId } = params;
 
     const regles = await this.prisma.reglePaiement.findMany({
       where: {
         anneeUniversitaireId,
         OR: [
-          { filiereId, niveauId },
-          { filiereId, niveauId: null },
-          { filiereId: null, niveauId },
-          { filiereId: null, niveauId: null },
+          { filiereId, type },
+          { filiereId, type: null },
+          { filiereId: null, type },
+          { filiereId: null, type: null },
         ],
       },
     });
 
     const parSpecificite = (r: (typeof regles)[number]) => {
-      if (r.filiereId && r.niveauId) return 3;
+      if (r.filiereId && r.type) return 3;
       if (r.filiereId) return 2;
-      if (r.niveauId) return 1;
+      if (r.type) return 1;
       return 0;
     };
 

@@ -1,4 +1,5 @@
-import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { TypeEtudiant } from '@prisma/client';
 
 export class CreateReglePaiementDto {
   @IsOptional()
@@ -6,8 +7,8 @@ export class CreateReglePaiementDto {
   filiereId?: string; // absent = règle générale (s'applique à toutes les filières)
 
   @IsOptional()
-  @IsString()
-  niveauId?: string; // absent = règle générale pour tous les niveaux
+  @IsEnum(TypeEtudiant, { message: 'Le type doit être ETUDIANT ou TRAVAILLEUR' })
+  type?: TypeEtudiant; // absent = s'applique aux deux types
 
   @IsString()
   anneeUniversitaireId: string;

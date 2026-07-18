@@ -19,20 +19,22 @@ async function main() {
     create: { code: RoleCode.ADMIN, libelle: 'Administrateur système' },
   });
 
-  // ---- Niveaux (référentiel fixe) ----
-  const niveaux = [
+  // ---- Filières (= niveaux, référentiel fixe) ----
+  const filieresData = [
     { code: 'L1', libelle: 'Licence 1' },
     { code: 'L2', libelle: 'Licence 2' },
     { code: 'L3', libelle: 'Licence 3' },
     { code: 'M1', libelle: 'Master 1' },
     { code: 'M2', libelle: 'Master 2' },
   ];
-  for (const niveau of niveaux) {
-    await prisma.niveau.upsert({
-      where: { code: niveau.code },
+  const filieres = [];
+  for (const f of filieresData) {
+    const filiere = await prisma.filiere.upsert({
+      where: { code: f.code },
       update: {},
-      create: niveau,
+      create: f,
     });
+    filieres.push(filiere);
   }
 
   // ---- Année universitaire courante ----
@@ -48,50 +50,67 @@ async function main() {
     },
   });
 
-  // ---- Filières d'exemple ----
-  const filieres = [
+  // ---- Ouvrir toutes les filières pour l'année courante ----
+  for (const filiere of filieres) {
+    await prisma.filiereAnnee.upsert({
+      where: {
+        filiereId_anneeUniversitaireId: {
+          filiereId: filiere.id,
+          anneeUniversitaireId: annee.id,
+        },
+      },
+      update: {},
+      create: { filiereId: filiere.id, anneeUniversitaireId: annee.id, actif: true },
+    });
+  }
+
+  // ---- Matières (catalogue), rattachées à toutes les filières ----
+  const matieresData = [
     { nom: "Droit de l'Homme", code: 'DH' },
     { nom: 'Droit des Affaires', code: 'DA' },
     { nom: 'Droit des Contentieux', code: 'DC' },
     { nom: 'Fiscalité des Entreprises', code: 'FE' },
   ];
-  for (const filiere of filieres) {
-    const f = await prisma.filiere.upsert({
-      where: { code: filiere.code },
+  for (const m of matieresData) {
+    const matiere = await prisma.matiere.upsert({
+      where: { code: m.code },
       update: {},
-      create: filiere,
+      create: m,
     });
-
-    // Ouvre L1 à M2 pour chaque filière sur l'année courante
-    for (const niveau of niveaux) {
-      const n = await prisma.niveau.findUnique({ where: { code: niveau.code } });
-      if (n) {
-        await prisma.filiereNiveau.upsert({
-          where: {
-            filiereId_niveauId_anneeUniversitaireId: {
-              filiereId: f.id,
-              niveauId: n.id,
-              anneeUniversitaireId: annee.id,
-            },
-          },
-          update: {},
-          create: { filiereId: f.id, niveauId: n.id, anneeUniversitaireId: annee.id },
-        });
-      }
+    for (const filiere of filieres) {
+      await prisma.filiereMatiere.upsert({
+        where: { filiereId_matiereId: { filiereId: filiere.id, matiereId: matiere.id } },
+        update: {},
+        create: { filiereId: filiere.id, matiereId: matiere.id },
+      });
     }
   }
 
-  // ---- Règle de paiement générale par défaut (pour tester les inscriptions) ----
-  // S'applique à toutes les filières/niveaux de l'année courante, sauf règle plus spécifique.
+  // ---- Règle de paiement générale par défaut (étudiants classiques) ----
   await prisma.reglePaiement.upsert({
-    where: { id: 'seed-regle-generale-2025-2026' },
+    where: { id: 'seed-regle-etudiant-2025-2026' },
     update: {},
     create: {
-      id: 'seed-regle-generale-2025-2026',
+      id: 'seed-regle-etudiant-2025-2026',
       filiereId: null,
-      niveauId: null,
+      type: 'ETUDIANT',
       anneeUniversitaireId: annee.id,
       montantTotal: 500000,
+      pourcentageInscription: 60,
+      nombreEcheances: 3,
+    },
+  });
+
+  // ---- Règle de paiement pour les travailleurs (souvent plus élevée) ----
+  await prisma.reglePaiement.upsert({
+    where: { id: 'seed-regle-travailleur-2025-2026' },
+    update: {},
+    create: {
+      id: 'seed-regle-travailleur-2025-2026',
+      filiereId: null,
+      type: 'TRAVAILLEUR',
+      anneeUniversitaireId: annee.id,
+      montantTotal: 750000,
       pourcentageInscription: 60,
       nombreEcheances: 3,
     },

@@ -93,9 +93,9 @@ export class PaymentsService {
     return this.findOne(id);
   }
 
-  findAll(params: { etudiantId?: string; inscriptionId?: string; modePaiement?: string }) {
+  async findAll(params: { etudiantId?: string; inscriptionId?: string; modePaiement?: string }) {
     const { etudiantId, inscriptionId, modePaiement } = params;
-    return this.prisma.paiement.findMany({
+    const paiements = await this.prisma.paiement.findMany({
       where: {
         ...(etudiantId ? { etudiantId } : {}),
         ...(inscriptionId ? { inscriptionId } : {}),
@@ -103,11 +103,25 @@ export class PaymentsService {
       },
       include: {
         etudiant: true,
-        inscription: { include: { filiere: true, niveau: true } },
+        inscription: {
+          include: { filiere: true, paiements: { where: { statut: 'VALIDE' } } },
+        },
         recu: true,
         agent: true,
       },
       orderBy: { datePaiement: 'desc' },
+    });
+
+    // Reste à payer *actuel* sur l'inscription (pas seulement au moment de
+    // ce paiement précis) — cohérent avec ce qui est affiché partout
+    // ailleurs dans l'app (fiche étudiant, fiche inscription...).
+    return paiements.map((p) => {
+      const totalPayeInscription = p.inscription.paiements.reduce(
+        (s, pp) => s + Number(pp.montant),
+        0,
+      );
+      const resteAPayer = Math.max(Number(p.inscription.montantTotalDu) - totalPayeInscription, 0);
+      return { ...p, resteAPayerInscription: resteAPayer };
     });
   }
 
@@ -119,10 +133,9 @@ export class PaymentsService {
         inscription: {
           include: {
             filiere: true,
-            niveau: true,
             anneeUniversitaire: true,
             echeances: { orderBy: { numeroEcheance: 'asc' } },
-            paiements: { where: { statut: 'VALIDE' } },
+            paiements: { where: { statut: 'VALIDE' }, orderBy: { datePaiement: 'asc' } },
           },
         },
         recu: true,
@@ -131,6 +144,22 @@ export class PaymentsService {
       },
     });
     if (!paiement) throw new NotFoundException('Paiement introuvable');
-    return paiement;
+
+    // Est-ce que CE paiement précis est celui qui a fait basculer
+    // l'inscription en "soldée" ? (utile pour l'afficher sur le reçu)
+    let estPaiementSoldant = false;
+    if (paiement.statut === 'VALIDE') {
+      const montantTotalDu = Number(paiement.inscription.montantTotalDu);
+      let cumul = 0;
+      for (const p of paiement.inscription.paiements) {
+        const cumulAvant = cumul;
+        cumul += Number(p.montant);
+        if (p.id === paiement.id && cumulAvant < montantTotalDu && cumul >= montantTotalDu) {
+          estPaiementSoldant = true;
+        }
+      }
+    }
+
+    return { ...paiement, estPaiementSoldant };
   }
 }

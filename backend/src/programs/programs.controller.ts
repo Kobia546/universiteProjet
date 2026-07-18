@@ -1,26 +1,17 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ProgramsService } from './programs.service';
-import { CreateFiliereDto } from './dto/create-filiere.dto';
-import { UpdateFiliereDto } from './dto/update-filiere.dto';
-import { OuvrirNiveauDto } from './dto/ouvrir-niveau.dto';
+import { CreateMatiereDto } from './dto/create-matiere.dto';
+import { UpdateMatiereDto } from './dto/update-matiere.dto';
+import { OuvrirFiliereDto } from './dto/ouvrir-filiere.dto';
+import { RattacherMatiereDto } from './dto/rattacher-matiere.dto';
 
 @Controller('filieres')
 export class ProgramsController {
   constructor(private readonly programsService: ProgramsService) {}
 
-  @Post()
-  create(@Body() dto: CreateFiliereDto) {
-    return this.programsService.createFiliere(dto);
-  }
-
   @Get()
   findAll() {
     return this.programsService.findAllFilieres();
-  }
-
-  @Get('niveaux')
-  findAllNiveaux() {
-    return this.programsService.findAllNiveaux();
   }
 
   @Get(':id')
@@ -28,18 +19,48 @@ export class ProgramsController {
     return this.programsService.findOneFiliere(id);
   }
 
+  @Post('ouvrir')
+  ouvrir(@Body() dto: OuvrirFiliereDto) {
+    return this.programsService.ouvrirFiliere(dto);
+  }
+
+  @Patch(':id/fermer')
+  fermer(@Param('id') id: string) {
+    return this.programsService.fermerFiliere(id);
+  }
+
+  @Post('matieres/rattacher')
+  rattacherMatiere(@Body() dto: RattacherMatiereDto) {
+    return this.programsService.rattacherMatiere(dto);
+  }
+
+  @Delete('matieres/rattachement/:id')
+  detacherMatiere(@Param('id') id: string) {
+    return this.programsService.detacherMatiere(id);
+  }
+}
+
+@Controller('matieres')
+export class MatieresController {
+  constructor(private readonly programsService: ProgramsService) {}
+
+  @Post()
+  create(@Body() dto: CreateMatiereDto) {
+    return this.programsService.createMatiere(dto);
+  }
+
+  @Get()
+  findAll() {
+    return this.programsService.findAllMatieres();
+  }
+
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateFiliereDto) {
-    return this.programsService.updateFiliere(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateMatiereDto) {
+    return this.programsService.updateMatiere(id, dto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.programsService.removeFiliere(id);
-  }
-
-  @Post('ouvrir-niveau')
-  ouvrirNiveau(@Body() dto: OuvrirNiveauDto) {
-    return this.programsService.ouvrirNiveau(dto);
+    return this.programsService.removeMatiere(id);
   }
 }

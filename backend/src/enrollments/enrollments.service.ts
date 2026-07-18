@@ -19,29 +19,32 @@ export class EnrollmentsService {
   ) {}
 
   async create(dto: CreateInscriptionDto, agentId: string) {
-    const { etudiantId, filiereId, niveauId, anneeUniversitaireId } = dto;
+    const { etudiantId, filiereId, anneeUniversitaireId } = dto;
 
-    // 1. Vérifier que le niveau est bien ouvert pour cette filière/année
-    const filiereNiveau = await this.prisma.filiereNiveau.findUnique({
+    const etudiant = await this.prisma.etudiant.findUnique({ where: { id: etudiantId } });
+    if (!etudiant) throw new NotFoundException('Étudiant introuvable');
+
+    // 1. Vérifier que la filière est bien ouverte pour cette année
+    const filiereAnnee = await this.prisma.filiereAnnee.findUnique({
       where: {
-        filiereId_niveauId_anneeUniversitaireId: { filiereId, niveauId, anneeUniversitaireId },
+        filiereId_anneeUniversitaireId: { filiereId, anneeUniversitaireId },
       },
     });
-    if (!filiereNiveau || !filiereNiveau.actif) {
+    if (!filiereAnnee || !filiereAnnee.actif) {
       throw new BadRequestException(
-        "Ce niveau n'est pas ouvert pour cette filière sur cette année universitaire.",
+        "Cette filière n'est pas ouverte pour cette année universitaire.",
       );
     }
 
-    // 2. Résoudre la règle de paiement applicable
+    // 2. Résoudre la règle de paiement applicable (selon filière + type d'étudiant)
     const regle = await this.paymentRulesService.resoudreRegleApplicable({
       filiereId,
-      niveauId,
+      type: etudiant.type,
       anneeUniversitaireId,
     });
     if (!regle) {
       throw new BadRequestException(
-        "Aucune règle de paiement n'est configurée pour cette filière/niveau/année. " +
+        "Aucune règle de paiement n'est configurée pour cette filière/type d'étudiant/année. " +
           'Configurez-en une dans Paramètres avant de créer une inscription.',
       );
     }
@@ -72,11 +75,9 @@ export class EnrollmentsService {
 
       for (let i = 1; i <= nombreEcheancesRestantes; i++) {
         const estDerniere = i === nombreEcheancesRestantes;
-        // Répartit les échéances restantes uniformément jusqu'à la fin de l'année universitaire
         const dateLimite = new Date(
           dateInscription.getTime() + (dureeTotaleMs * i) / nombreEcheancesRestantes,
         );
-        // La dernière échéance absorbe l'arrondi pour que le total soit exact
         const montantPrevu = estDerniere
           ? montantRestant - montantParEcheance * (nombreEcheancesRestantes - 1)
           : montantParEcheance;
@@ -87,13 +88,12 @@ export class EnrollmentsService {
 
     const numeroInscription = await this.numeroInscriptionService.genererNumero();
 
-    // 4. Créer l'inscription + ses échéances en une seule transaction
+    // 4. Créer l'inscription + ses échéances
     return this.prisma.inscription.create({
       data: {
         numeroInscription,
         etudiantId,
         filiereId,
-        niveauId,
         anneeUniversitaireId,
         montantTotalDu: montantTotal,
         agentId,
@@ -103,22 +103,34 @@ export class EnrollmentsService {
         echeances: true,
         etudiant: true,
         filiere: true,
-        niveau: true,
         anneeUniversitaire: true,
       },
     });
   }
 
-  findAll(params: { anneeUniversitaireId?: string; filiereId?: string; statut?: string }) {
+  async findAll(params: { anneeUniversitaireId?: string; filiereId?: string; statut?: string }) {
     const { anneeUniversitaireId, filiereId, statut } = params;
-    return this.prisma.inscription.findMany({
+    const inscriptions = await this.prisma.inscription.findMany({
       where: {
         ...(anneeUniversitaireId ? { anneeUniversitaireId } : {}),
         ...(filiereId ? { filiereId } : {}),
         ...(statut ? { statut: statut as any } : {}),
       },
-      include: { etudiant: true, filiere: true, niveau: true, anneeUniversitaire: true },
+      include: {
+        etudiant: true,
+        filiere: true,
+        anneeUniversitaire: true,
+        paiements: { where: { statut: 'VALIDE' } },
+      },
       orderBy: { createdAt: 'desc' },
+    });
+
+    // Solde calculé directement ici, pour l'afficher dans la liste sans
+    // avoir à ouvrir chaque inscription.
+    return inscriptions.map((i) => {
+      const totalPaye = i.paiements.reduce((s, p) => s + Number(p.montant), 0);
+      const resteAPayer = Math.max(Number(i.montantTotalDu) - totalPaye, 0);
+      return { ...i, totalPaye, resteAPayer };
     });
   }
 
@@ -128,7 +140,6 @@ export class EnrollmentsService {
       include: {
         etudiant: true,
         filiere: true,
-        niveau: true,
         anneeUniversitaire: true,
         echeances: { orderBy: { numeroEcheance: 'asc' } },
         paiements: { orderBy: { datePaiement: 'desc' } },

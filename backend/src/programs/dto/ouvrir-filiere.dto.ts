@@ -1,9 +1,6 @@
 import { IsString } from 'class-validator';
 
-export class CreateInscriptionDto {
-  @IsString()
-  etudiantId: string;
-
+export class OuvrirFiliereDto {
   @IsString()
   filiereId: string;
 

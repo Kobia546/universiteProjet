@@ -9,5 +9,6 @@ import { EnrollmentsModule } from '../enrollments/enrollments.module';
   imports: [AccountingModule, EnrollmentsModule],
   controllers: [PaymentsController],
   providers: [PaymentsService, NumeroRecuService],
+  exports: [PaymentsService],
 })
 export class PaymentsModule {}

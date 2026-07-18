@@ -6,5 +6,6 @@ import { MatriculeService } from './matricule.service';
 @Module({
   controllers: [StudentsController],
   providers: [StudentsService, MatriculeService],
+  exports: [StudentsService],
 })
 export class StudentsModule {}

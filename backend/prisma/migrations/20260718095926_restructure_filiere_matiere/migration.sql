@@ -5,6 +5,9 @@ CREATE TYPE "RoleCode" AS ENUM ('COMPTABILITE', 'ADMIN');
 CREATE TYPE "Sexe" AS ENUM ('M', 'F');
 
 -- CreateEnum
+CREATE TYPE "TypeEtudiant" AS ENUM ('ETUDIANT', 'TRAVAILLEUR');
+
+-- CreateEnum
 CREATE TYPE "StatutInscription" AS ENUM ('EN_COURS', 'VALIDEE', 'ANNULEE', 'TRANSFEREE');
 
 -- CreateEnum
@@ -62,6 +65,7 @@ CREATE TABLE "etudiants" (
     "nom" TEXT NOT NULL,
     "prenom" TEXT NOT NULL,
     "sexe" "Sexe" NOT NULL,
+    "type" "TypeEtudiant" NOT NULL DEFAULT 'ETUDIANT',
     "dateNaissance" TIMESTAMP(3) NOT NULL,
     "lieuNaissance" TEXT,
     "telephone" TEXT,
@@ -78,20 +82,29 @@ CREATE TABLE "etudiants" (
 -- CreateTable
 CREATE TABLE "filieres" (
     "id" TEXT NOT NULL,
-    "nom" TEXT NOT NULL,
     "code" TEXT NOT NULL,
-    "actif" BOOLEAN NOT NULL DEFAULT true,
+    "libelle" TEXT NOT NULL,
 
     CONSTRAINT "filieres_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "niveaux" (
+CREATE TABLE "matieres" (
     "id" TEXT NOT NULL,
+    "nom" TEXT NOT NULL,
     "code" TEXT NOT NULL,
-    "libelle" TEXT NOT NULL,
+    "actif" BOOLEAN NOT NULL DEFAULT true,
 
-    CONSTRAINT "niveaux_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "matieres_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "filiere_matieres" (
+    "id" TEXT NOT NULL,
+    "filiereId" TEXT NOT NULL,
+    "matiereId" TEXT NOT NULL,
+
+    CONSTRAINT "filiere_matieres_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -106,14 +119,13 @@ CREATE TABLE "annees_universitaires" (
 );
 
 -- CreateTable
-CREATE TABLE "filiere_niveaux" (
+CREATE TABLE "filiere_annees" (
     "id" TEXT NOT NULL,
     "filiereId" TEXT NOT NULL,
-    "niveauId" TEXT NOT NULL,
     "anneeUniversitaireId" TEXT NOT NULL,
     "actif" BOOLEAN NOT NULL DEFAULT true,
 
-    CONSTRAINT "filiere_niveaux_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "filiere_annees_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -122,7 +134,6 @@ CREATE TABLE "inscriptions" (
     "numeroInscription" TEXT NOT NULL,
     "etudiantId" TEXT NOT NULL,
     "filiereId" TEXT NOT NULL,
-    "niveauId" TEXT NOT NULL,
     "anneeUniversitaireId" TEXT NOT NULL,
     "statut" "StatutInscription" NOT NULL DEFAULT 'EN_COURS',
     "dateInscription" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -137,7 +148,7 @@ CREATE TABLE "inscriptions" (
 CREATE TABLE "regles_paiement" (
     "id" TEXT NOT NULL,
     "filiereId" TEXT,
-    "niveauId" TEXT,
+    "type" "TypeEtudiant",
     "anneeUniversitaireId" TEXT NOT NULL,
     "montantTotal" DECIMAL(12,2) NOT NULL,
     "pourcentageInscription" INTEGER NOT NULL,
@@ -238,10 +249,13 @@ CREATE UNIQUE INDEX "etudiants_matricule_key" ON "etudiants"("matricule");
 CREATE UNIQUE INDEX "filieres_code_key" ON "filieres"("code");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "niveaux_code_key" ON "niveaux"("code");
+CREATE UNIQUE INDEX "matieres_code_key" ON "matieres"("code");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "filiere_niveaux_filiereId_niveauId_anneeUniversitaireId_key" ON "filiere_niveaux"("filiereId", "niveauId", "anneeUniversitaireId");
+CREATE UNIQUE INDEX "filiere_matieres_filiereId_matiereId_key" ON "filiere_matieres"("filiereId", "matiereId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "filiere_annees_filiereId_anneeUniversitaireId_key" ON "filiere_annees"("filiereId", "anneeUniversitaireId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "inscriptions_numeroInscription_key" ON "inscriptions"("numeroInscription");
@@ -271,22 +285,22 @@ ALTER TABLE "users" ADD CONSTRAINT "users_roleId_fkey" FOREIGN KEY ("roleId") RE
 ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "filiere_niveaux" ADD CONSTRAINT "filiere_niveaux_filiereId_fkey" FOREIGN KEY ("filiereId") REFERENCES "filieres"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "filiere_matieres" ADD CONSTRAINT "filiere_matieres_filiereId_fkey" FOREIGN KEY ("filiereId") REFERENCES "filieres"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "filiere_niveaux" ADD CONSTRAINT "filiere_niveaux_niveauId_fkey" FOREIGN KEY ("niveauId") REFERENCES "niveaux"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "filiere_matieres" ADD CONSTRAINT "filiere_matieres_matiereId_fkey" FOREIGN KEY ("matiereId") REFERENCES "matieres"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "filiere_niveaux" ADD CONSTRAINT "filiere_niveaux_anneeUniversitaireId_fkey" FOREIGN KEY ("anneeUniversitaireId") REFERENCES "annees_universitaires"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "filiere_annees" ADD CONSTRAINT "filiere_annees_filiereId_fkey" FOREIGN KEY ("filiereId") REFERENCES "filieres"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "filiere_annees" ADD CONSTRAINT "filiere_annees_anneeUniversitaireId_fkey" FOREIGN KEY ("anneeUniversitaireId") REFERENCES "annees_universitaires"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inscriptions" ADD CONSTRAINT "inscriptions_etudiantId_fkey" FOREIGN KEY ("etudiantId") REFERENCES "etudiants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inscriptions" ADD CONSTRAINT "inscriptions_filiereId_fkey" FOREIGN KEY ("filiereId") REFERENCES "filieres"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "inscriptions" ADD CONSTRAINT "inscriptions_niveauId_fkey" FOREIGN KEY ("niveauId") REFERENCES "niveaux"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inscriptions" ADD CONSTRAINT "inscriptions_anneeUniversitaireId_fkey" FOREIGN KEY ("anneeUniversitaireId") REFERENCES "annees_universitaires"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -296,9 +310,6 @@ ALTER TABLE "inscriptions" ADD CONSTRAINT "inscriptions_agentId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "regles_paiement" ADD CONSTRAINT "regles_paiement_filiereId_fkey" FOREIGN KEY ("filiereId") REFERENCES "filieres"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "regles_paiement" ADD CONSTRAINT "regles_paiement_niveauId_fkey" FOREIGN KEY ("niveauId") REFERENCES "niveaux"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "regles_paiement" ADD CONSTRAINT "regles_paiement_anneeUniversitaireId_fkey" FOREIGN KEY ("anneeUniversitaireId") REFERENCES "annees_universitaires"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
