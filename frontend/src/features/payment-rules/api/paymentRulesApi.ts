@@ -1,21 +1,22 @@
 import { apiClient } from '../../../shared/lib/apiClient';
 
+export type TypeEtudiant = 'ETUDIANT' | 'TRAVAILLEUR';
+
 export interface ReglePaiement {
   id: string;
   filiereId: string | null;
-  niveauId: string | null;
+  type: TypeEtudiant | null;
   anneeUniversitaireId: string;
   montantTotal: number | string;
   pourcentageInscription: number;
   nombreEcheances: number;
-  filiere?: { nom: string } | null;
-  niveau?: { code: string } | null;
+  filiere?: { code: string; libelle: string } | null;
   anneeUniversitaire?: { libelle: string };
 }
 
 export interface CreateReglePaiementInput {
   filiereId?: string;
-  niveauId?: string;
+  type?: TypeEtudiant;
   anneeUniversitaireId: string;
   montantTotal: number;
   pourcentageInscription: number;

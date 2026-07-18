@@ -1,9 +1,19 @@
 import { apiClient } from '../../../shared/lib/apiClient';
-import type { CreateEtudiantInput, Etudiant } from '../types';
+import type { CreateEtudiantInput, Etudiant, EtudiantStatutPaiement } from '../types';
 
 export async function fetchEtudiants(recherche?: string): Promise<Etudiant[]> {
   const { data } = await apiClient.get<Etudiant[]>('/etudiants', {
     params: recherche ? { recherche } : {},
+  });
+  return data;
+}
+
+export async function fetchEtudiantsParStatutPaiement(
+  statut: 'doit' | 'solde',
+  anneeUniversitaireId?: string,
+): Promise<EtudiantStatutPaiement[]> {
+  const { data } = await apiClient.get<EtudiantStatutPaiement[]>('/etudiants/statut-paiement', {
+    params: anneeUniversitaireId ? { statut, anneeUniversitaireId } : { statut },
   });
   return data;
 }

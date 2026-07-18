@@ -10,13 +10,14 @@ export interface Paiement {
   modePaiement: ModePaiement;
   datePaiement: string;
   statut: 'VALIDE' | 'ANNULE';
+  estPaiementSoldant?: boolean;
+  resteAPayerInscription?: number;
   etudiant: { id: string; nom: string; prenom: string; matricule: string };
   inscription: {
     id: string;
     numeroInscription: string;
     montantTotalDu: number | string;
-    filiere: { nom: string };
-    niveau: { code: string };
+    filiere: { code: string; libelle: string };
     anneeUniversitaire?: { libelle: string };
     echeances?: Array<{
       id: string;

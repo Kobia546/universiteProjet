@@ -44,6 +44,7 @@ export function PaymentsListPage() {
                 <th className="px-5 py-3">Mode</th>
                 <th className="px-5 py-3">Date</th>
                 <th className="px-5 py-3 text-right">Montant</th>
+                <th className="px-5 py-3 text-right">Reste à payer (inscription)</th>
                 <th className="px-5 py-3">Statut</th>
               </tr>
             </thead>
@@ -64,6 +65,15 @@ export function PaymentsListPage() {
                   <td className="px-5 py-3 text-slate-500">{paiement.modePaiement}</td>
                   <td className="px-5 py-3 text-slate-500">{formatDateHeure(paiement.datePaiement)}</td>
                   <td className="px-5 py-3 text-right font-medium">{formatMontant(paiement.montant)}</td>
+                  <td className="px-5 py-3 text-right">
+                    {(paiement.resteAPayerInscription ?? 0) <= 0 ? (
+                      <Badge variant="success">Soldé</Badge>
+                    ) : (
+                      <Badge variant="danger">
+                        {formatMontant(paiement.resteAPayerInscription ?? 0)}
+                      </Badge>
+                    )}
+                  </td>
                   <td className="px-5 py-3">
                     <Badge variant={paiement.statut === 'VALIDE' ? 'success' : 'danger'}>
                       {paiement.statut}

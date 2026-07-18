@@ -17,7 +17,7 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-  { to: '/etudiants', label: 'Étudiants', icon: Users },
+  { to: '/etudiants', label: 'Étudiants & Travailleurs', icon: Users },
   { to: '/inscriptions', label: 'Inscriptions', icon: GraduationCap },
   { to: '/paiements', label: 'Paiements', icon: Wallet },
   { to: '/comptabilite', label: 'Comptabilité', icon: BookOpen },

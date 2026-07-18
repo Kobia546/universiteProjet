@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Check, X, Wallet } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
@@ -25,6 +25,7 @@ const VARIANTE_STATUT_ECHEANCE: Record<string, 'success' | 'danger' | 'warning' 
 
 export function EnrollmentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [echeanceEnEdition, setEcheanceEnEdition] = useState<string | null>(null);
@@ -78,11 +79,25 @@ export function EnrollmentDetailPage() {
   if (isLoading) return <p className="text-sm text-slate-500">Chargement...</p>;
   if (!inscription) return <p className="text-sm text-slate-500">Inscription introuvable.</p>;
 
+  const totalPaye =
+    inscription.paiements?.filter((p) => p.statut === 'VALIDE').reduce((s, p) => s + Number(p.montant), 0) ?? 0;
+  const resteAPayer = Math.max(Number(inscription.montantTotalDu) - totalPaye, 0);
+
   return (
     <div>
       <PageHeader
         title={`Inscription ${inscription.numeroInscription}`}
-        description={`${inscription.etudiant.prenom} ${inscription.etudiant.nom} — ${inscription.filiere.nom} · ${inscription.niveau.code} · ${inscription.anneeUniversitaire.libelle}`}
+        description={`${inscription.etudiant.prenom} ${inscription.etudiant.nom} — ${inscription.filiere.libelle} · ${inscription.anneeUniversitaire.libelle}`}
+        action={
+          resteAPayer > 0 && inscription.statut !== 'ANNULEE' ? (
+            <Button onClick={() => navigate(`/paiements/nouveau?inscriptionId=${inscription.id}`)}>
+              <Wallet className="h-4 w-4" />
+              Enregistrer un paiement
+            </Button>
+          ) : inscription.statut !== 'ANNULEE' ? (
+            <Badge variant="success">Soldé</Badge>
+          ) : undefined
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">

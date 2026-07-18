@@ -1,13 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Plus, Wallet, Pencil } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
+import { Button } from '../../shared/components/ui/Button';
 import { fetchEtudiant } from './api/studentsApi';
 import { formatDate, formatMontant } from '../../shared/lib/format';
 
 export function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const { data: etudiant, isLoading } = useQuery({
     queryKey: ['etudiant', id],
@@ -23,6 +26,18 @@ export function StudentDetailPage() {
       <PageHeader
         title={`${etudiant.prenom} ${etudiant.nom}`}
         description={`Matricule : ${etudiant.matricule}`}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => navigate(`/etudiants/${etudiant.id}/modifier`)}>
+              <Pencil className="h-4 w-4" />
+              Modifier
+            </Button>
+            <Button onClick={() => navigate(`/inscriptions/nouvelle?etudiantId=${etudiant.id}`)}>
+              <Plus className="h-4 w-4" />
+              Nouvelle inscription
+            </Button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
@@ -32,6 +47,12 @@ export function StudentDetailPage() {
             <div className="flex justify-between">
               <dt className="text-slate-500">Sexe</dt>
               <dd className="text-slate-900">{etudiant.sexe === 'M' ? 'Masculin' : 'Féminin'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Type</dt>
+              <dd className="text-slate-900">
+                {etudiant.type === 'TRAVAILLEUR' ? 'Travailleur' : 'Étudiant'}
+              </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-slate-500">Date de naissance</dt>
@@ -69,23 +90,45 @@ export function StudentDetailPage() {
                 >
                   <div>
                     <p className="text-sm font-medium text-slate-900">
-                      {inscription.filiere?.nom} — {inscription.niveau?.code}
+                      {inscription.filiere?.libelle}
                     </p>
                     <p className="text-xs text-slate-500">
                       {inscription.anneeUniversitaire?.libelle} · N° {inscription.numeroInscription}
                     </p>
                   </div>
-                  <Badge
-                    variant={
-                      inscription.statut === 'VALIDEE'
-                        ? 'success'
-                        : inscription.statut === 'ANNULEE'
-                          ? 'danger'
-                          : 'info'
-                    }
-                  >
-                    {inscription.statut}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {inscription.statut !== 'ANNULEE' && (
+                      (inscription.resteAPayer ?? 0) <= 0 ? (
+                        <Badge variant="success">Soldé</Badge>
+                      ) : (
+                        <>
+                          <Badge variant="danger">
+                            Doit {formatMontant(inscription.resteAPayer ?? 0)}
+                          </Badge>
+                          <button
+                            onClick={() =>
+                              navigate(`/paiements/nouveau?inscriptionId=${inscription.id}`)
+                            }
+                            className="flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700"
+                          >
+                            <Wallet className="h-3 w-3" />
+                            Payer
+                          </button>
+                        </>
+                      )
+                    )}
+                    <Badge
+                      variant={
+                        inscription.statut === 'VALIDEE'
+                          ? 'success'
+                          : inscription.statut === 'ANNULEE'
+                            ? 'danger'
+                            : 'info'
+                      }
+                    >
+                      {inscription.statut}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>

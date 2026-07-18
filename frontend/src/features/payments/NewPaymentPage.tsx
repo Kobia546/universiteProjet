@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
@@ -20,10 +21,16 @@ const MODES_PAIEMENT: { value: ModePaiement; label: string }[] = [
 export function NewPaymentPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+
+  // Pré-sélection possible depuis un lien "Payer" (fiche étudiant ou
+  // fiche inscription) : ?inscriptionId=... — dans ce cas on saute la
+  // recherche, tout est déjà rempli.
+  const inscriptionPreselectionnee = searchParams.get('inscriptionId') ?? '';
 
   const [recherche, setRecherche] = useState('');
   const [etudiantId, setEtudiantId] = useState('');
-  const [inscriptionId, setInscriptionId] = useState('');
+  const [inscriptionId, setInscriptionId] = useState(inscriptionPreselectionnee);
   const [montant, setMontant] = useState('');
   const [motif, setMotif] = useState('');
   const [modePaiement, setModePaiement] = useState<ModePaiement>('ESPECES');
@@ -48,6 +55,14 @@ export function NewPaymentPage() {
     enabled: !!inscriptionId,
   });
 
+  // Si on arrive avec ?inscriptionId=..., on déduit l'étudiant depuis
+  // l'inscription elle-même, sans passer par la recherche manuelle.
+  useEffect(() => {
+    if (inscriptionPreselectionnee && inscriptionDetail && !etudiantId) {
+      setEtudiantId(inscriptionDetail.etudiant.id);
+    }
+  }, [inscriptionPreselectionnee, inscriptionDetail, etudiantId]);
+
   const totalPaye =
     inscriptionDetail?.paiements
       ?.filter((p) => p.statut === 'VALIDE')
@@ -55,6 +70,7 @@ export function NewPaymentPage() {
   const soldeRestant = inscriptionDetail
     ? Number(inscriptionDetail.montantTotalDu) - totalPaye
     : null;
+  const dejaSoldee = soldeRestant !== null && soldeRestant <= 0;
 
   // Montant suggéré pour "solder la prochaine échéance" : cumul dû jusqu'à la
   // première échéance non soldée, moins ce qui a déjà été payé. Couvre aussi
@@ -74,6 +90,7 @@ export function NewPaymentPage() {
     onSuccess: (paiement) => {
       queryClient.invalidateQueries({ queryKey: ['paiements'] });
       queryClient.invalidateQueries({ queryKey: ['inscription', inscriptionId] });
+      queryClient.invalidateQueries({ queryKey: ['etudiant', etudiantId] });
       navigate(`/paiements/${paiement.id}`);
     },
   });
@@ -85,57 +102,72 @@ export function NewPaymentPage() {
       <PageHeader title="Nouveau paiement" description="Enregistrer un paiement et générer le reçu" />
 
       <Card className="space-y-6">
-        {/* Étudiant */}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Étudiant</label>
-          <Input
-            placeholder="Rechercher par nom, prénom ou matricule..."
-            value={recherche}
-            onChange={(e) => setRecherche(e.target.value)}
-          />
-          {recherche && etudiants && etudiants.length > 0 && !etudiantId && (
-            <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200">
-              {etudiants.map((etudiant) => (
+        {/* Étudiant — masqué si on arrive déjà avec une inscription précise */}
+        {!inscriptionPreselectionnee && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Étudiant / Travailleur
+            </label>
+            <Input
+              placeholder="Rechercher par nom, prénom ou matricule..."
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+            />
+            {recherche && etudiants && etudiants.length > 0 && !etudiantId && (
+              <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                {etudiants.map((etudiant) => (
+                  <button
+                    key={etudiant.id}
+                    type="button"
+                    onClick={() => {
+                      setEtudiantId(etudiant.id);
+                      setInscriptionId('');
+                      setRecherche('');
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span>
+                      {etudiant.prenom} {etudiant.nom}
+                    </span>
+                    <span className="font-mono text-xs text-slate-400">{etudiant.matricule}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {etudiantId && (etudiantDetail || etudiantSelectionneListe) && (
+              <div className="mt-2 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm">
+                <span className="font-medium text-brand-900">
+                  {(etudiantDetail ?? etudiantSelectionneListe)!.prenom}{' '}
+                  {(etudiantDetail ?? etudiantSelectionneListe)!.nom}
+                </span>
                 <button
-                  key={etudiant.id}
                   type="button"
                   onClick={() => {
-                    setEtudiantId(etudiant.id);
+                    setEtudiantId('');
                     setInscriptionId('');
-                    setRecherche('');
                   }}
-                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="text-xs text-brand-700 underline"
                 >
-                  <span>
-                    {etudiant.prenom} {etudiant.nom}
-                  </span>
-                  <span className="font-mono text-xs text-slate-400">{etudiant.matricule}</span>
+                  Changer
                 </button>
-              ))}
-            </div>
-          )}
-          {etudiantId && (etudiantDetail || etudiantSelectionneListe) && (
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm">
-              <span className="font-medium text-brand-900">
-                {(etudiantDetail ?? etudiantSelectionneListe)!.prenom}{' '}
-                {(etudiantDetail ?? etudiantSelectionneListe)!.nom}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setEtudiantId('');
-                  setInscriptionId('');
-                }}
-                className="text-xs text-brand-700 underline"
-              >
-                Changer
-              </button>
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Inscription (à choisir parmi celles de l'étudiant) */}
-        {etudiantDetail && (
+        {inscriptionPreselectionnee && etudiantDetail && (
+          <div className="rounded-lg bg-brand-50 px-3 py-2 text-sm">
+            <span className="font-medium text-brand-900">
+              {etudiantDetail.prenom} {etudiantDetail.nom}
+            </span>
+            <span className="ml-2 font-mono text-xs text-brand-600">
+              {etudiantDetail.matricule}
+            </span>
+          </div>
+        )}
+
+        {/* Inscription (à choisir parmi celles de l'étudiant, sauf si déjà imposée par l'URL) */}
+        {etudiantDetail && !inscriptionPreselectionnee && (
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">Inscription</label>
             <select
@@ -146,7 +178,7 @@ export function NewPaymentPage() {
               <option value="">Sélectionner...</option>
               {etudiantDetail.inscriptions?.map((inscription) => (
                 <option key={inscription.id} value={inscription.id}>
-                  {inscription.filiere?.nom} — {inscription.niveau?.code} (
+                  {inscription.filiere?.libelle} (
                   {inscription.anneeUniversitaire?.libelle})
                 </option>
               ))}
@@ -159,7 +191,23 @@ export function NewPaymentPage() {
           </div>
         )}
 
-        {soldeRestant !== null && (
+        {inscriptionPreselectionnee && inscriptionDetail && (
+          <div className="rounded-lg border border-slate-100 px-3 py-2 text-sm text-slate-700">
+            Inscription : <span className="font-medium">{inscriptionDetail.filiere.libelle}</span>{' '}
+            ({inscriptionDetail.anneeUniversitaire.libelle}) — N°{' '}
+            {inscriptionDetail.numeroInscription}
+          </div>
+        )}
+
+        {dejaSoldee && (
+          <div className="flex items-center gap-2 rounded-lg border-2 border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-700">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Cette inscription est déjà entièrement soldée — aucun paiement n'est requis. Tu peux
+            quand même en enregistrer un si c'est exceptionnel (avance sur l'année suivante, etc.).
+          </div>
+        )}
+
+        {soldeRestant !== null && !dejaSoldee && (
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
             <span className="text-slate-500">Solde restant dû : </span>
             <span className="font-semibold text-slate-900">{formatMontant(soldeRestant)}</span>

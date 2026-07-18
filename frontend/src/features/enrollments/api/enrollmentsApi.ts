@@ -14,9 +14,10 @@ export interface Inscription {
   statut: 'EN_COURS' | 'VALIDEE' | 'ANNULEE' | 'TRANSFEREE';
   dateInscription: string;
   montantTotalDu: number | string;
+  totalPaye?: number;
+  resteAPayer?: number;
   etudiant: { id: string; nom: string; prenom: string; matricule: string };
-  filiere: { id: string; nom: string };
-  niveau: { id: string; code: string };
+  filiere: { id: string; code: string; libelle: string };
   anneeUniversitaire: { id: string; libelle: string };
   echeances?: Echeance[];
   paiements?: Array<{ id: string; montant: number | string; statut: 'VALIDE' | 'ANNULE' }>;
@@ -25,7 +26,6 @@ export interface Inscription {
 export interface CreateInscriptionInput {
   etudiantId: string;
   filiereId: string;
-  niveauId: string;
   anneeUniversitaireId: string;
 }
 

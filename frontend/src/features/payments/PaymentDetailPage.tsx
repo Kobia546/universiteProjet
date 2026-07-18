@@ -136,7 +136,7 @@ export function PaymentDetailPage() {
           <ChampLigne label="En règlement de" valeur={paiement.motif} />
           <ChampLigne
             label="Année d'études"
-            valeur={`${paiement.inscription.niveau.code} — ${paiement.inscription.anneeUniversitaire?.libelle ?? ''}`}
+            valeur={`${paiement.inscription.filiere.libelle} — ${paiement.inscription.anneeUniversitaire?.libelle ?? ''}`}
           />
 
           <div className="flex items-center gap-6 border-b border-dotted border-slate-300 pb-3 pt-1">
@@ -158,6 +158,13 @@ export function PaymentDetailPage() {
             valeur={formatMontant(Math.max(resteAPayer, 0))}
             accent
           />
+
+          {paiement.estPaiementSoldant && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-emerald-300 bg-emerald-50 py-2 text-sm font-semibold text-emerald-700">
+              ✓ Ce paiement solde entièrement l'inscription
+            </div>
+          )}
+
           {prochaineEcheance ? (
             <>
               <ChampLigne
