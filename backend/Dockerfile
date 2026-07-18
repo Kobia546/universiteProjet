@@ -9,8 +9,7 @@ RUN npm ci
 COPY . .
 RUN npx prisma generate
 RUN npm run build
-# Diagnostic : affiche la structure réelle de dist/ dans les logs de build
-# Render, pour repérer immédiatement un souci de chemin de sortie.
+# Diagnostic : affiche la structure réelle de dist/ après build
 RUN echo "=== Contenu de dist/ après build ===" && find dist -type f
 
 # --- Étape 2 : image finale, allégée ---
