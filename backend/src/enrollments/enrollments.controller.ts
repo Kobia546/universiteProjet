@@ -3,6 +3,7 @@ import { EnrollmentsService } from './enrollments.service';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
 import { CreateEcheanceDto } from './dto/create-echeance.dto';
 import { UpdateEcheanceDto } from './dto/update-echeance.dto';
+import { UpdateDateInscriptionDto } from './dto/update-date-inscription.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('inscriptions')
@@ -29,6 +30,15 @@ export class EnrollmentsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.enrollmentsService.findOne(id);
+  }
+
+  @Patch(':id/date-inscription')
+  modifierDateInscription(
+    @Param('id') id: string,
+    @Body() dto: UpdateDateInscriptionDto,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.enrollmentsService.modifierDateInscription(id, dto.dateInscription, user.userId);
   }
 
   @Post(':id/echeances')

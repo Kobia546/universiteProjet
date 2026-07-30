@@ -60,23 +60,31 @@ export class EnrollmentsService {
     const montantRestant = montantTotal - montantInscription;
     const nombreEcheancesRestantes = Math.max(regle.nombreEcheances - 1, 0);
 
-    const dateInscription = new Date();
+    // Date réelle d'inscription (celle du carnet papier) — distincte de
+    // l'horodatage de saisie (`createdAt`, généré automatiquement et jamais
+    // modifiable). Par défaut la date du jour si non précisée.
+    const dateInscriptionReelle = dto.dateInscription ? new Date(dto.dateInscription) : new Date();
+
+    // Le calcul des échéances reste basé sur le moment réel de la saisie
+    // (et non la date du carnet, qui peut être dans le passé) pour éviter
+    // de générer des échéances déjà "en retard" lors d'une saisie tardive.
+    const maintenant = new Date();
     const echeancesData: {
       numeroEcheance: number;
       montantPrevu: number;
       dateLimite: Date;
     }[] = [
-      { numeroEcheance: 1, montantPrevu: montantInscription, dateLimite: dateInscription },
+      { numeroEcheance: 1, montantPrevu: montantInscription, dateLimite: maintenant },
     ];
 
     if (nombreEcheancesRestantes > 0) {
       const montantParEcheance = Math.floor(montantRestant / nombreEcheancesRestantes);
-      const dureeTotaleMs = annee.dateFin.getTime() - dateInscription.getTime();
+      const dureeTotaleMs = annee.dateFin.getTime() - maintenant.getTime();
 
       for (let i = 1; i <= nombreEcheancesRestantes; i++) {
         const estDerniere = i === nombreEcheancesRestantes;
         const dateLimite = new Date(
-          dateInscription.getTime() + (dureeTotaleMs * i) / nombreEcheancesRestantes,
+          maintenant.getTime() + (dureeTotaleMs * i) / nombreEcheancesRestantes,
         );
         const montantPrevu = estDerniere
           ? montantRestant - montantParEcheance * (nombreEcheancesRestantes - 1)
@@ -96,6 +104,7 @@ export class EnrollmentsService {
         filiereId,
         anneeUniversitaireId,
         montantTotalDu: montantTotal,
+        dateInscription: dateInscriptionReelle,
         agentId,
         echeances: { create: echeancesData },
       },
@@ -106,6 +115,31 @@ export class EnrollmentsService {
         anneeUniversitaire: true,
       },
     });
+  }
+
+  /**
+   * Corrige la date d'inscription (celle du carnet papier) après coup —
+   * par exemple si le comptable s'est trompé ou l'a saisie approximativement.
+   * `createdAt` (l'horodatage de saisie informatique) n'est jamais touché.
+   */
+  async modifierDateInscription(id: string, dateInscription: string, agentId: string) {
+    const inscription = await this.prisma.inscription.findUnique({ where: { id } });
+    if (!inscription) throw new NotFoundException(`Inscription ${id} introuvable`);
+
+    const misAJour = await this.prisma.inscription.update({
+      where: { id },
+      data: { dateInscription: new Date(dateInscription) },
+    });
+
+    await this.auditService.enregistrer({
+      userId: agentId,
+      action: 'modification_date_inscription',
+      ressourceType: 'inscription',
+      ressourceId: id,
+      details: { ancienneDateInscription: inscription.dateInscription, dateInscription },
+    });
+
+    return misAJour;
   }
 
   async findAll(params: { anneeUniversitaireId?: string; filiereId?: string; statut?: string }) {

@@ -76,6 +76,11 @@ export class CreateOnboardingDto {
   @IsString()
   anneeUniversitaireId: string;
 
+  /** Date réelle d'inscription (carnet papier) — par défaut la date du jour. */
+  @IsOptional()
+  @IsDateString()
+  dateInscription?: string;
+
   // ---- Premier paiement (optionnel) ----
   @IsOptional()
   @ValidateNested()

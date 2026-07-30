@@ -59,6 +59,7 @@ export class OnboardingService {
         etudiantId: etudiant.id,
         filiereId: dto.filiereId,
         anneeUniversitaireId: dto.anneeUniversitaireId,
+        dateInscription: dto.dateInscription,
       },
       agentId,
     );

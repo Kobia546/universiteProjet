@@ -22,8 +22,8 @@ export class StudentsService {
     });
   }
 
-  async findAll(params: { recherche?: string; filiereId?: string }) {
-    const { recherche, filiereId } = params;
+  async findAll(params: { recherche?: string; filiereId?: string; anneeUniversitaireId?: string }) {
+    const { recherche, filiereId, anneeUniversitaireId } = params;
 
     const etudiants = await this.prisma.etudiant.findMany({
       where: {
@@ -39,6 +39,9 @@ export class StudentsService {
             : {},
           filiereId
             ? { inscriptions: { some: { filiereId } } }
+            : {},
+          anneeUniversitaireId
+            ? { inscriptions: { some: { anneeUniversitaireId } } }
             : {},
         ],
       },
@@ -56,8 +59,21 @@ export class StudentsService {
     // chaque fiche pour savoir qui a soldé ou non.
     return etudiants.map((e) => {
       const { inscriptions, ...reste } = e;
+
+      // Date d'inscription (carnet) correspondant à l'année filtrée, si
+      // une année a été précisée — sinon non applicable (un étudiant peut
+      // avoir plusieurs inscriptions sur plusieurs années).
+      const inscriptionAnnee = anneeUniversitaireId
+        ? inscriptions.find((i) => i.anneeUniversitaireId === anneeUniversitaireId)
+        : undefined;
+
       if (inscriptions.length === 0) {
-        return { ...reste, statutPaiement: 'AUCUNE_INSCRIPTION' as const, resteAPayer: 0 };
+        return {
+          ...reste,
+          statutPaiement: 'AUCUNE_INSCRIPTION' as const,
+          resteAPayer: 0,
+          dateInscription: inscriptionAnnee?.dateInscription ?? null,
+        };
       }
       const totalDu = inscriptions.reduce((s, i) => s + Number(i.montantTotalDu), 0);
       const totalPaye = inscriptions.reduce(
@@ -69,6 +85,7 @@ export class StudentsService {
         ...reste,
         statutPaiement: (resteAPayer <= 0 ? 'SOLDE' : 'DOIT') as 'SOLDE' | 'DOIT',
         resteAPayer: Math.max(resteAPayer, 0),
+        dateInscription: inscriptionAnnee?.dateInscription ?? null,
       };
     });
   }

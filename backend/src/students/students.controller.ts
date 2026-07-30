@@ -25,8 +25,9 @@ export class StudentsController {
   findAll(
     @Query('recherche') recherche?: string,
     @Query('filiereId') filiereId?: string,
+    @Query('anneeUniversitaireId') anneeUniversitaireId?: string,
   ) {
-    return this.studentsService.findAll({ recherche, filiereId });
+    return this.studentsService.findAll({ recherche, filiereId, anneeUniversitaireId });
   }
 
   // Déclaré AVANT ':id' pour ne pas être intercepté par la route générique
