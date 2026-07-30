@@ -29,7 +29,7 @@ export function OnboardingPage() {
   const [sexe, setSexe] = useState<Sexe>('M');
   const [type, setType] = useState<TypeEtudiant>('ETUDIANT');
   const [dateNaissance] = useState(() => '2000-01-01');
-  const [lieuNaissance, setLieuNaissance] = useState('');
+  const [lieuNaissance] = useState(() => 'SOUBRE');
   const [telephone, setTelephone] = useState('');
   const [email, setEmail] = useState('');
   const [adresse, setAdresse] = useState('');
