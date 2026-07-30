@@ -25,24 +25,33 @@ class PaiementInitialDto {
 }
 
 export class CreateOnboardingDto {
-  // ---- Étudiant ----
+  // ---- Étudiant existant (si fourni, les champs ci-dessous sont ignorés) ----
+  @IsOptional()
+  @IsString()
+  etudiantId?: string;
+
+  // ---- Nouvel étudiant (requis seulement si etudiantId n'est pas fourni) ----
+  @IsOptional()
   @IsString()
   @MinLength(2)
-  nom: string;
+  nom?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(2)
-  prenom: string;
+  prenom?: string;
 
+  @IsOptional()
   @IsEnum(Sexe, { message: 'Le sexe doit être M ou F' })
-  sexe: Sexe;
+  sexe?: Sexe;
 
   @IsOptional()
   @IsEnum(TypeEtudiant, { message: 'Le type doit être ETUDIANT ou TRAVAILLEUR' })
   type?: TypeEtudiant;
 
+  @IsOptional()
   @IsDateString()
-  dateNaissance: string;
+  dateNaissance?: string;
 
   @IsOptional()
   @IsString()
