@@ -54,6 +54,7 @@ export class DashboardService {
 
     const filtreDepensesMois = construireFiltreDate(debutMois, finMois);
     const filtreDepensesHistorique = construireFiltreDate(debutHistorique, finMois);
+    const filtreDepensesAnnee = anneeDebut && anneeFin ? { date: { gte: anneeDebut, lte: anneeFin } } : {};
 
     const [
       inscriptionsAnnee,
@@ -95,22 +96,14 @@ export class DashboardService {
         orderBy: { datePaiement: 'desc' },
         take: 8,
       }),
-      anneeCiblee
-        ? this.prisma.ecritureDepense.findMany({
-            where: {
-              statut: 'VALIDE',
-              ...(anneeDebut && anneeFin
-                ? { date: { gte: anneeDebut, lte: anneeFin } }
-                : {}),
-            },
-            orderBy: { date: 'desc' },
-            take: 8,
-          })
-        : this.prisma.ecritureDepense.findMany({
-            where: { statut: 'VALIDE' },
-            orderBy: { date: 'desc' },
-            take: 8,
-          }),
+      this.prisma.ecritureDepense.findMany({
+        where: {
+          statut: 'VALIDE',
+          ...(anneeCiblee ? filtreDepensesAnnee : {}),
+        },
+        orderBy: { date: 'desc' },
+        take: 8,
+      }),
       this.prisma.ecritureRecette.findMany({
         where: {
           statut: 'VALIDE',
