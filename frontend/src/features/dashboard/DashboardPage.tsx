@@ -171,7 +171,7 @@ export function DashboardPage() {
                     />
                     {r.type === 'TRAVAILLEUR' ? 'Travailleurs' : 'Étudiants'}
                     <span className="tabular-nums ml-auto font-medium text-slate-900">
-                      {r.total}
+                      ({r.total})
                     </span>
                   </li>
                 ))}
@@ -191,7 +191,7 @@ export function DashboardPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[420px] text-sm">
                     <tbody className="divide-y divide-slate-100">
-                      {stats.dernieresOperations.map((op) => (
+                      {stats.dernieresOperations.slice(0, 5).map((op) => (
                         <tr key={`${op.type}-${op.id}`}>
                           <td className="py-2.5 text-slate-700">{op.libelle}</td>
                           <td className="py-2.5 text-right text-xs text-slate-400">
