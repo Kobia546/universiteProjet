@@ -22,7 +22,7 @@ export function NewEnrollmentPage() {
 
   const { data: etudiants } = useQuery({
     queryKey: ['etudiants', recherche],
-    queryFn: () => fetchEtudiants(recherche || undefined),
+    queryFn: () => fetchEtudiants({ recherche: recherche || undefined }),
     enabled: !etudiantPreselectionne,
   });
   const { data: etudiantPreselectionneDetail } = useQuery({
