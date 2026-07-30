@@ -37,11 +37,7 @@ export function DashboardPage() {
 
   const libelleAnnee = stats?.anneeUniversitaire?.libelle ?? '';
   const dernieresOperationsAffichees = stats?.dernieresOperations.slice(0, 5) ?? [];
-  const periodeDernieresOperations = dernieresOperationsAffichees.length
-    ? `${formatDate(dernieresOperationsAffichees[dernieresOperationsAffichees.length - 1].date)} — ${formatDate(
-        dernieresOperationsAffichees[0].date,
-      )}`
-    : '';
+  const periodeUniversitaire = stats?.anneeUniversitaire ? `Année universitaire ${stats.anneeUniversitaire.libelle}` : '';
 
   return (
     <div>
@@ -191,8 +187,8 @@ export function DashboardPage() {
                 <h2 className="font-serif text-[15px] font-semibold text-slate-900">
                   Les 5 Dernières opérations
                 </h2>
-                {periodeDernieresOperations ? (
-                  <span className="text-xs text-slate-500">Période : {periodeDernieresOperations}</span>
+                {periodeUniversitaire ? (
+                  <span className="text-xs text-slate-500">{periodeUniversitaire}</span>
                 ) : null}
               </div>
               <div className="rule-perforee mb-4 mt-2" />
