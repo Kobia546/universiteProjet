@@ -20,6 +20,9 @@ export interface Etudiant {
   // Présents sur la liste (GET /etudiants) — statut global tous comptes faits
   statutPaiement?: 'SOLDE' | 'DOIT' | 'AUCUNE_INSCRIPTION';
   resteAPayer?: number;
+  // Date d'inscription (carnet) correspondant à l'année filtrée, si une
+  // année a été précisée dans la recherche — sinon absente/null.
+  dateInscription?: string | null;
   // Présents uniquement sur la vue détail (GET /etudiants/:id)
   inscriptions?: Array<{
     id: string;

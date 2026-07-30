@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
@@ -36,15 +36,23 @@ export function StudentsListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: etudiants, isLoading } = useQuery({
-    queryKey: ['etudiants', recherche],
-    queryFn: () => fetchEtudiants(recherche || undefined),
-    enabled: onglet === 'tous',
-  });
-
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
     queryFn: fetchAnneesUniversitaires,
+  });
+
+  useEffect(() => {
+    if (!anneeFiltre && annees?.length) {
+      const active = annees.find((a) => a.active) ?? annees[0];
+      setAnneeFiltre(active.id);
+    }
+  }, [annees, anneeFiltre]);
+
+  const { data: etudiants, isLoading } = useQuery({
+    queryKey: ['etudiants', recherche, anneeFiltre],
+    queryFn: () =>
+      fetchEtudiants({ recherche: recherche || undefined, anneeUniversitaireId: anneeFiltre || undefined }),
+    enabled: onglet === 'tous',
   });
 
   const { data: etudiantsStatut, isLoading: isLoadingStatut } = useQuery({
@@ -113,7 +121,7 @@ export function StudentsListPage() {
       exporterPdf({
         titre: 'Liste des étudiants',
         sousTitre: `${etudiants.length} étudiant(s) — export du ${formatDate(new Date().toISOString())}`,
-        colonnes: ['Matricule', 'Nom', 'Prénom', 'Type', 'Téléphone', 'Statut paiement', 'Inscrit le'],
+        colonnes: ['Matricule', 'Nom', 'Prénom', 'Type', 'Téléphone', 'Statut paiement', 'Saisi le', 'Inscrit le'],
         lignes: etudiants.map((e) => [
           e.matricule,
           e.nom,
@@ -126,6 +134,7 @@ export function StudentsListPage() {
               ? `Doit ${formatMontantPdf(e.resteAPayer ?? 0)}`
               : 'Aucune inscription',
           formatDate(e.createdAt),
+          e.dateInscription ? formatDate(e.dateInscription) : '—',
         ]),
         nomFichier: 'etudiants',
       });
@@ -217,23 +226,21 @@ export function StudentsListPage() {
         ))}
       </div>
 
-      {(onglet === 'doit' || onglet === 'solde') && (
-        <div className="mb-4 flex items-center gap-2">
-          <label className="text-sm text-slate-500">Année :</label>
-          <select
-            value={anneeFiltre}
-            onChange={(e) => setAnneeFiltre(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            <option value="">Année active</option>
-            {annees?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.libelle} {a.active ? '(active)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <label className="text-sm text-slate-500">Année :</label>
+        <select
+          value={anneeFiltre}
+          onChange={(e) => setAnneeFiltre(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+        >
+          <option value="">{onglet === 'tous' ? 'Toutes les années' : 'Année active'}</option>
+          {annees?.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.libelle} {a.active ? '(active)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {onglet === 'tous' && (
         <div className="mb-4 relative max-w-sm">
@@ -264,6 +271,7 @@ export function StudentsListPage() {
                   <th className="px-5 py-3">Type</th>
                   <th className="px-5 py-3">Téléphone</th>
                   <th className="px-5 py-3">Statut paiement</th>
+                  <th className="px-5 py-3">Saisi le</th>
                   <th className="px-5 py-3">Inscrit le</th>
                 </tr>
               </thead>
@@ -296,6 +304,9 @@ export function StudentsListPage() {
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap text-slate-500">
                       {formatDateHeure(etudiant.createdAt)}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap text-slate-500">
+                      {etudiant.dateInscription ? formatDate(etudiant.dateInscription) : '—'}
                     </td>
                   </tr>
                 ))}

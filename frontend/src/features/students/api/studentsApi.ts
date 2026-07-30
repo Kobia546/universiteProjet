@@ -1,9 +1,13 @@
 import { apiClient } from '../../../shared/lib/apiClient';
 import type { CreateEtudiantInput, Etudiant, EtudiantStatutPaiement } from '../types';
 
-export async function fetchEtudiants(recherche?: string): Promise<Etudiant[]> {
+export async function fetchEtudiants(params?: {
+  recherche?: string;
+  filiereId?: string;
+  anneeUniversitaireId?: string;
+}): Promise<Etudiant[]> {
   const { data } = await apiClient.get<Etudiant[]>('/etudiants', {
-    params: recherche ? { recherche } : {},
+    params: params ?? {},
   });
   return data;
 }

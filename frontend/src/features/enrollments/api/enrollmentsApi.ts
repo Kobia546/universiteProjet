@@ -13,6 +13,7 @@ export interface Inscription {
   numeroInscription: string;
   statut: 'EN_COURS' | 'VALIDEE' | 'ANNULEE' | 'TRANSFEREE';
   dateInscription: string;
+  createdAt?: string;
   montantTotalDu: number | string;
   totalPaye?: number;
   resteAPayer?: number;
@@ -27,6 +28,7 @@ export interface CreateInscriptionInput {
   etudiantId: string;
   filiereId: string;
   anneeUniversitaireId: string;
+  dateInscription?: string;
 }
 
 export async function fetchInscriptions(params?: {
@@ -45,6 +47,16 @@ export async function fetchInscription(id: string): Promise<Inscription> {
 
 export async function createInscription(input: CreateInscriptionInput): Promise<Inscription> {
   const { data } = await apiClient.post<Inscription>('/inscriptions', input);
+  return data;
+}
+
+export async function modifierDateInscription(
+  id: string,
+  dateInscription: string,
+): Promise<Inscription> {
+  const { data } = await apiClient.patch<Inscription>(`/inscriptions/${id}/date-inscription`, {
+    dateInscription,
+  });
   return data;
 }
 

@@ -7,7 +7,7 @@ import { Button } from '../../shared/components/ui/Button';
 import { Input } from '../../shared/components/ui/Input';
 import { fetchFilieres, fetchAnneesUniversitaires } from '../programs/programsApi';
 import { fetchReglesPaiement } from '../payment-rules/api/paymentRulesApi';
-import { fetchEtudiants, fetchEtudiant } from '../students/api/studentsApi';
+import { fetchEtudiants, fetchEtudiant, updateEtudiant } from '../students/api/studentsApi';
 import { createOnboarding } from './api/onboardingApi';
 import { formatMontant } from '../../shared/lib/format';
 import type { Sexe, TypeEtudiant } from '../students/types';
@@ -37,7 +37,7 @@ export function OnboardingPage() {
 
   const { data: etudiants } = useQuery({
     queryKey: ['etudiants', recherche],
-    queryFn: () => fetchEtudiants(recherche || undefined),
+    queryFn: () => fetchEtudiants({ recherche: recherche || undefined }),
     enabled: !!recherche && mode === 'existant',
   });
   const { data: etudiantSelectionne } = useQuery({
@@ -45,6 +45,12 @@ export function OnboardingPage() {
     queryFn: () => fetchEtudiant(etudiantId),
     enabled: !!etudiantId && mode === 'existant',
   });
+
+  // Dès qu'un universitaire existant est chargé, on pré-remplit les champs
+  // modifiables (type, téléphone, email) avec ses valeurs actuelles — le
+  // comptable peut les garder telles quelles ou les changer avant de
+  // continuer (ex: changement de numéro, promotion étudiant → travailleur).
+  const [donneesInitialisees, setDonneesInitialisees] = useState(false);
 
   // Nouvel universitaire
   const [nom, setNom] = useState('');
@@ -60,9 +66,24 @@ export function OnboardingPage() {
   const [email, setEmail] = useState('');
   const [adresse] = useState('');
 
+  useEffect(() => {
+    if (etudiantSelectionne && !donneesInitialisees) {
+      setType(etudiantSelectionne.type);
+      setTelephone(etudiantSelectionne.telephone ?? '');
+      setEmail(etudiantSelectionne.email ?? '');
+      setDonneesInitialisees(true);
+    }
+    if (!etudiantId && donneesInitialisees) {
+      setDonneesInitialisees(false);
+    }
+  }, [etudiantSelectionne, etudiantId, donneesInitialisees]);
+
   // Inscription
   const [anneeUniversitaireId, setAnneeUniversitaireId] = useState('');
   const [filiereId, setFiliereId] = useState('');
+  const [dateInscription, setDateInscription] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
 
   // Paiement initial (optionnel)
   const [enregistrerPaiement, setEnregistrerPaiement] = useState(true);
@@ -118,9 +139,18 @@ export function OnboardingPage() {
   }, [regles, filiereId, typeEffectif]);
 
   const mutation = useMutation({
-    mutationFn: createOnboarding,
+    mutationFn: async (input: Parameters<typeof createOnboarding>[0]) => {
+      // Si l'universitaire existe déjà, on applique d'abord les éventuelles
+      // modifications (type, téléphone, email) faites dans l'étape de
+      // vérification, avant de créer l'inscription.
+      if (mode === 'existant' && etudiantId) {
+        await updateEtudiant(etudiantId, { type, telephone: telephone || undefined, email: email || undefined });
+      }
+      return createOnboarding(input);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['etudiants'] });
+      queryClient.invalidateQueries({ queryKey: ['etudiant'] });
       queryClient.invalidateQueries({ queryKey: ['inscriptions'] });
       queryClient.invalidateQueries({ queryKey: ['paiements'] });
       navigate('/inscriptions');
@@ -150,6 +180,7 @@ export function OnboardingPage() {
           }),
       filiereId,
       anneeUniversitaireId,
+      dateInscription,
       paiementInitial: enregistrerPaiement
         ? { montant: Number(montant), motif, modePaiement }
         : undefined,
@@ -239,6 +270,40 @@ export function OnboardingPage() {
                     Changer
                   </button>
                 )}
+              </div>
+            )}
+
+            {etudiantSelectionne && (
+              <div className="mt-5 border-t border-slate-100 pt-5">
+                <p className="mb-4 text-sm text-slate-600">
+                  Vérifie les informations ci-dessous avant de continuer — garde-les telles
+                  quelles si rien n'a changé depuis l'année précédente, ou modifie-les si besoin
+                  (changement de numéro, d'email, ou de type étudiant/travailleur).
+                </p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-slate-700">Type</label>
+                    <select
+                      value={type}
+                      onChange={(e) => setType(e.target.value as TypeEtudiant)}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      <option value="ETUDIANT">Étudiant</option>
+                      <option value="TRAVAILLEUR">Travailleur</option>
+                    </select>
+                  </div>
+                  <Input
+                    label="Téléphone"
+                    value={telephone}
+                    onChange={(e) => setTelephone(e.target.value)}
+                  />
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
               </div>
             )}
           </Card>
@@ -363,6 +428,18 @@ export function OnboardingPage() {
                 ))}
               </select>
             </div>
+          </div>
+          <div className="mt-4 max-w-xs">
+            <Input
+              label="Date d'inscription (celle du carnet)"
+              type="date"
+              value={dateInscription}
+              onChange={(e) => setDateInscription(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Par défaut la date du jour — modifie-la si la saisie est faite après coup et que la
+              vraie date figure sur le carnet papier.
+            </p>
           </div>
         </Card>
 

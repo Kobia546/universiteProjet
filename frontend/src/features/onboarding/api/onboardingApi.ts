@@ -15,6 +15,7 @@ export interface CreateOnboardingInput {
   adresse?: string;
   filiereId: string;
   anneeUniversitaireId: string;
+  dateInscription?: string;
   paiementInitial?: {
     montant: number;
     motif: string;

@@ -12,9 +12,10 @@ import {
   ajouterEcheance,
   modifierEcheance,
   supprimerEcheance,
+  modifierDateInscription,
   type Echeance,
 } from './api/enrollmentsApi';
-import { formatDate, formatMontant } from '../../shared/lib/format';
+import { formatDate, formatDateHeure, formatMontant } from '../../shared/lib/format';
 
 const VARIANTE_STATUT_ECHEANCE: Record<string, 'success' | 'danger' | 'warning' | 'default'> = {
   SOLDE: 'success',
@@ -34,6 +35,8 @@ export function EnrollmentDetailPage() {
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
   const [nouveauMontant, setNouveauMontant] = useState('');
   const [nouvelleDate, setNouvelleDate] = useState('');
+  const [editionDateInscription, setEditionDateInscription] = useState(false);
+  const [dateInscriptionEdition, setDateInscriptionEdition] = useState('');
 
   const { data: inscription, isLoading } = useQuery({
     queryKey: ['inscription', id],
@@ -70,6 +73,14 @@ export function EnrollmentDetailPage() {
     onSuccess: invalider,
   });
 
+  const modifierDateMutation = useMutation({
+    mutationFn: (dateInscription: string) => modifierDateInscription(id!, dateInscription),
+    onSuccess: () => {
+      invalider();
+      setEditionDateInscription(false);
+    },
+  });
+
   function commencerEdition(echeance: Echeance) {
     setEcheanceEnEdition(echeance.id);
     setMontantEdition(String(echeance.montantPrevu));
@@ -100,7 +111,7 @@ export function EnrollmentDetailPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
         <Card>
           <p className="text-sm text-slate-500">Montant total dû</p>
           <p className="tabular-nums mt-1 font-serif text-xl font-semibold text-slate-900">
@@ -114,13 +125,60 @@ export function EnrollmentDetailPage() {
           </p>
         </Card>
         <Card>
-          <p className="text-sm text-slate-500">Date d'inscription</p>
-          <p className="tabular-nums mt-1 font-serif text-xl font-semibold text-slate-900">
-            {formatDate(inscription.dateInscription)}
-          </p>
+          <p className="text-sm text-slate-500">Inscrit le (carnet)</p>
+          {editionDateInscription ? (
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="date"
+                value={dateInscriptionEdition}
+                onChange={(e) => setDateInscriptionEdition(e.target.value)}
+                className="rounded border border-slate-200 px-2 py-1 text-sm"
+              />
+              <button
+                onClick={() => modifierDateMutation.mutate(dateInscriptionEdition)}
+                className="text-emerald-600"
+                title="Enregistrer"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setEditionDateInscription(false)}
+                className="text-slate-400"
+                title="Annuler"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="mt-1 flex items-center gap-2">
+              <p className="tabular-nums font-serif text-xl font-semibold text-slate-900">
+                {formatDate(inscription.dateInscription)}
+              </p>
+              <button
+                onClick={() => {
+                  setDateInscriptionEdition(inscription.dateInscription.slice(0, 10));
+                  setEditionDateInscription(true);
+                }}
+                className="text-slate-400 hover:text-brand-600"
+                title="Modifier"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+       
         </Card>
+        {inscription.createdAt && (
+          <Card>
+            <p className="text-sm text-slate-500">Saisi le</p>
+            <p className="tabular-nums mt-1 font-serif text-xl font-semibold text-slate-900">
+              {formatDateHeure(inscription.createdAt)}
+            </p>
+        
+          </Card>
+        )}
 
-        <Card className="col-span-3">
+        <Card className="col-span-1 sm:col-span-2 lg:col-span-4">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-serif text-[15px] font-semibold text-slate-900">Échéancier</h2>
             {!ajoutEnCours && (

@@ -37,7 +37,7 @@ export function NewPaymentPage() {
 
   const { data: etudiants } = useQuery({
     queryKey: ['etudiants', recherche],
-    queryFn: () => fetchEtudiants(recherche || undefined),
+    queryFn: () => fetchEtudiants({ recherche: recherche || undefined }),
     enabled: !!recherche,
   });
 

@@ -33,8 +33,6 @@ export function StudentEditPage() {
         lieuNaissance: etudiant.lieuNaissance ?? '',
         telephone: etudiant.telephone ?? '',
         email: etudiant.email ?? '',
-        adresse: etudiant.adresse ?? '',
-        informationsComplementaires: etudiant.informationsComplementaires ?? '',
       });
     }
   }, [etudiant, form]);
@@ -119,21 +117,6 @@ export function StudentEditPage() {
             />
           </div>
 
-          <Input
-            label="Adresse"
-            value={form.adresse}
-            onChange={(e) => handleChange('adresse', e.target.value)}
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-700">Informations complémentaires</label>
-            <textarea
-              value={form.informationsComplementaires}
-              onChange={(e) => handleChange('informationsComplementaires', e.target.value)}
-              rows={3}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
 
           {mutation.isError && (
             <p className="text-sm text-red-600">
