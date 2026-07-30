@@ -16,6 +16,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AuditModule } from './audit/audit.module';
 import { HealthModule } from './health/health.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { CarnetRecuModule } from './carnet-recu/carnet-recu.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
     AuditModule,
     HealthModule,
     OnboardingModule,
+    CarnetRecuModule,
   ],
   providers: [
     {

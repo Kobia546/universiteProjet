@@ -23,8 +23,9 @@ export class DashboardService {
       inscriptionsAnnee,
       recettesDuMois,
       depensesDuMois,
-      echeancesEnAttente,
+      echeancesAnnee,
       dernieresPaiements,
+      dernieresDepenses,
       recettes6Mois,
       depenses6Mois,
     ] = await Promise.all([
@@ -38,13 +39,10 @@ export class DashboardService {
       this.prisma.ecritureDepense.findMany({
         where: { statut: 'VALIDE', date: { gte: debutMois, lte: finMois } },
       }),
-      this.prisma.echeance.aggregate({
+      this.prisma.echeance.findMany({
         where: {
-          statut: { in: ['A_PAYER', 'PARTIEL', 'EN_RETARD'] },
           ...(anneeCiblee ? { inscription: { anneeUniversitaireId: anneeCiblee.id } } : {}),
         },
-        _count: true,
-        _sum: { montantPrevu: true },
       }),
       this.prisma.paiement.findMany({
         where: {
@@ -53,6 +51,11 @@ export class DashboardService {
         },
         include: { etudiant: true },
         orderBy: { datePaiement: 'desc' },
+        take: 8,
+      }),
+      this.prisma.ecritureDepense.findMany({
+        where: { statut: 'VALIDE' },
+        orderBy: { date: 'desc' },
         take: 8,
       }),
       this.prisma.ecritureRecette.findMany({
@@ -66,13 +69,13 @@ export class DashboardService {
     const revenusDuMois = recettesDuMois.reduce((s, r) => s + Number(r.montant), 0);
     const depensesTotalDuMois = depensesDuMois.reduce((s, d) => s + Number(d.montant), 0);
 
-    // Étudiants distincts inscrits cette année (un étudiant = 1 seule
+    // Universitaires distincts inscrits cette année (un étudiant = 1 seule
     // fois même s'il a plusieurs inscriptions, en théorie rare).
-    const etudiantsUniques = new Map<string, (typeof inscriptionsAnnee)[number]['etudiant']>();
+    const universitairesUniques = new Map<string, (typeof inscriptionsAnnee)[number]['etudiant']>();
     for (const i of inscriptionsAnnee) {
-      etudiantsUniques.set(i.etudiantId, i.etudiant);
+      universitairesUniques.set(i.etudiantId, i.etudiant);
     }
-    const totalEtudiants = etudiantsUniques.size;
+    const totalUniversitaires = universitairesUniques.size;
 
     const repartitionMap = new Map<string, number>();
     for (const inscription of inscriptionsAnnee) {
@@ -85,29 +88,50 @@ export class DashboardService {
     }));
 
     const typeMap = new Map<string, number>();
-    for (const etudiant of etudiantsUniques.values()) {
-      typeMap.set(etudiant.type, (typeMap.get(etudiant.type) ?? 0) + 1);
+    for (const universitaire of universitairesUniques.values()) {
+      typeMap.set(universitaire.type, (typeMap.get(universitaire.type) ?? 0) + 1);
     }
     const repartitionParType = Array.from(typeMap.entries()).map(([type, total]) => ({
       type,
       total,
     }));
 
-    const dernieresOperations = dernieresPaiements.map((p) => ({
-      id: p.id,
-      type: 'paiement' as const,
-      libelle: `${p.motif} — ${p.etudiant.prenom} ${p.etudiant.nom}`,
-      montant: Number(p.montant),
-      date: p.datePaiement,
-    }));
+    // Dernières opérations = paiements ET dépenses mêlés, triés par date,
+    // pas seulement les paiements (les dépenses n'apparaissaient pas avant).
+    const dernieresOperations = [
+      ...dernieresPaiements.map((p) => ({
+        id: p.id,
+        type: 'recette' as const,
+        libelle: `${p.motif} — ${p.etudiant.prenom} ${p.etudiant.nom}`,
+        montant: Number(p.montant),
+        date: p.datePaiement,
+      })),
+      ...dernieresDepenses.map((d) => ({
+        id: d.id,
+        type: 'depense' as const,
+        libelle: d.libelle,
+        montant: Number(d.montant),
+        date: d.date,
+      })),
+    ]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 8);
 
-    // Total dû vs total encaissé, scopé à l'année ciblée uniquement.
+    // Taux de règlement des inscriptions = part du montant total dû déjà
+    // encaissée, sur l'année ciblée (remplace le montant brut "impayé").
     const totalDuAnnee = inscriptionsAnnee.reduce((s, i) => s + Number(i.montantTotalDu), 0);
     const totalEncaisseAnnee = inscriptionsAnnee.reduce(
       (s, i) => s + i.paiements.reduce((s2, p) => s2 + Number(p.montant), 0),
       0,
     );
-    const totalImpaye = Math.max(totalDuAnnee - totalEncaisseAnnee, 0);
+    const tauxReglementInscriptions =
+      totalDuAnnee > 0 ? Math.min((totalEncaisseAnnee / totalDuAnnee) * 100, 100) : 0;
+
+    // Taux de règlement de la scolarité = part des échéances soldées sur
+    // le total des échéances de l'année (remplace "échéances en attente").
+    const echeancesSoldees = echeancesAnnee.filter((e) => e.statut === 'SOLDE').length;
+    const tauxReglementScolarite =
+      echeancesAnnee.length > 0 ? (echeancesSoldees / echeancesAnnee.length) * 100 : 0;
 
     // Évolution recettes/dépenses des 6 derniers mois — reste sur un
     // calendrier civil (les registres comptables EP703/EP704 sont datés
@@ -133,16 +157,13 @@ export class DashboardService {
       anneeUniversitaire: anneeCiblee
         ? { id: anneeCiblee.id, libelle: anneeCiblee.libelle }
         : null,
-      totalEtudiants,
+      totalUniversitaires,
       nouveauxInscrits: inscriptionsAnnee.length,
       revenusDuMois,
       depensesDuMois: depensesTotalDuMois,
       solde: revenusDuMois - depensesTotalDuMois,
-      totalImpaye,
-      paiementsEnAttente: {
-        nombre: echeancesEnAttente._count,
-        montant: Number(echeancesEnAttente._sum.montantPrevu ?? 0),
-      },
+      tauxReglementInscriptions,
+      tauxReglementScolarite,
       repartitionParFiliere,
       repartitionParType,
       evolution6Mois,

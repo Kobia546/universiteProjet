@@ -295,6 +295,19 @@ model Recu {
   @@map("recus")
 }
 
+// Configuration du carnet de reçus physique en cours d'utilisation — permet
+// au comptable de faire correspondre la numérotation de l'app avec le
+// carnet papier réellement utilisé (préfixe + numéro de départ/courant).
+model CarnetRecu {
+  id              String   @id @default(uuid())
+  annee           Int      @unique
+  prefixe         String   @default("REC")
+  prochainNumero  Int      @default(1)
+  updatedAt       DateTime @updatedAt
+
+  @@map("carnets_recu")
+}
+
 // ------------------------------------------------------------------
 // Comptabilité : EP703 (recettes) / EP704 (dépenses)
 // ------------------------------------------------------------------
