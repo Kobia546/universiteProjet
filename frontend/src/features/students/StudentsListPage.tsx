@@ -36,6 +36,13 @@ export function StudentsListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const { data: etudiants, isLoading } = useQuery({
+    queryKey: ['etudiants', recherche, anneeFiltre],
+    queryFn: () =>
+      fetchEtudiants({ recherche: recherche || undefined, anneeUniversitaireId: anneeFiltre || undefined }),
+    enabled: onglet === 'tous',
+  });
+
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
     queryFn: fetchAnneesUniversitaires,
@@ -47,13 +54,6 @@ export function StudentsListPage() {
       setAnneeFiltre(active.id);
     }
   }, [annees, anneeFiltre]);
-
-  const { data: etudiants, isLoading } = useQuery({
-    queryKey: ['etudiants', recherche, anneeFiltre],
-    queryFn: () =>
-      fetchEtudiants({ recherche: recherche || undefined, anneeUniversitaireId: anneeFiltre || undefined }),
-    enabled: onglet === 'tous',
-  });
 
   const { data: etudiantsStatut, isLoading: isLoadingStatut } = useQuery({
     queryKey: ['etudiants-statut-paiement', onglet, anneeFiltre],
@@ -163,7 +163,21 @@ export function StudentsListPage() {
         title="Universitaires"
         description="Gérez les fiches et le parcours de chaque étudiant"
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-full sm:w-[220px]">
+              <select
+                value={anneeFiltre}
+                onChange={(e) => setAnneeFiltre(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">{onglet === 'tous' ? 'Toutes les années' : 'Année active'}</option>
+                {annees?.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.libelle} {a.active ? '(active)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <input
               ref={fichierInputRef}
               type="file"
@@ -208,7 +222,7 @@ export function StudentsListPage() {
         {(
           [
             { key: 'tous', label: 'Tous' },
-            { key: 'doit', label: 'Qui doivent' },
+            { key: 'doit', label: 'Non Soldés' },
             { key: 'solde', label: 'Soldés' },
           ] as const
         ).map((tab) => (
@@ -224,22 +238,6 @@ export function StudentsListPage() {
             {tab.label}
           </button>
         ))}
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <label className="text-sm text-slate-500">Année :</label>
-        <select
-          value={anneeFiltre}
-          onChange={(e) => setAnneeFiltre(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        >
-          <option value="">{onglet === 'tous' ? 'Toutes les années' : 'Année active'}</option>
-          {annees?.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.libelle} {a.active ? '(active)' : ''}
-            </option>
-          ))}
-        </select>
       </div>
 
       {onglet === 'tous' && (
@@ -271,8 +269,8 @@ export function StudentsListPage() {
                   <th className="px-5 py-3">Type</th>
                   <th className="px-5 py-3">Téléphone</th>
                   <th className="px-5 py-3">Statut paiement</th>
-                  <th className="px-5 py-3">Saisi le</th>
                   <th className="px-5 py-3">Inscrit le</th>
+                  <th className="px-5 py-3">Saisi le</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -302,11 +300,12 @@ export function StudentsListPage() {
                         <Badge variant="default">Aucune inscription</Badge>
                       )}
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-slate-500">
-                      {formatDateHeure(etudiant.createdAt)}
-                    </td>
+                   
                     <td className="px-5 py-3 whitespace-nowrap text-slate-500">
                       {etudiant.dateInscription ? formatDate(etudiant.dateInscription) : '—'}
+                    </td>
+                     <td className="px-5 py-3 whitespace-nowrap text-slate-500">
+                      {formatDateHeure(etudiant.createdAt)}
                     </td>
                   </tr>
                 ))}
