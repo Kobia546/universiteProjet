@@ -37,23 +37,6 @@ export class DashboardService {
         }
       : {};
 
-    const construireFiltreDate = (debut: Date, fin: Date) => {
-      if (!anneeDebut || !anneeFin) {
-        return { date: { gte: debut, lte: fin } };
-      }
-
-      const debutFiltre = new Date(Math.max(debut.getTime(), anneeDebut.getTime()));
-      const finFiltre = new Date(Math.min(fin.getTime(), anneeFin.getTime()));
-
-      if (debutFiltre > finFiltre) {
-        return null;
-      }
-
-      return { date: { gte: debutFiltre, lte: finFiltre } };
-    };
-
-    const filtreDepensesMois = construireFiltreDate(debutMois, finMois);
-    const filtreDepensesHistorique = construireFiltreDate(debutHistorique, finMois);
     const filtreDepensesAnnee = anneeDebut && anneeFin ? { date: { gte: anneeDebut, lte: anneeFin } } : {};
 
     const [
@@ -77,11 +60,12 @@ export class DashboardService {
           ...(anneeCiblee ? filtreRecettesAnnee : {}),
         },
       }),
-      filtreDepensesMois
-        ? this.prisma.ecritureDepense.findMany({
-            where: { statut: 'VALIDE', ...filtreDepensesMois },
-          })
-        : [],
+      this.prisma.ecritureDepense.findMany({
+        where: {
+          statut: 'VALIDE',
+          ...(anneeCiblee ? filtreDepensesAnnee : { date: { gte: debutMois, lte: finMois } }),
+        },
+      }),
       this.prisma.echeance.findMany({
         where: {
           ...(anneeCiblee ? { inscription: { anneeUniversitaireId: anneeCiblee.id } } : {}),
@@ -111,15 +95,18 @@ export class DashboardService {
           ...(anneeCiblee ? filtreRecettesAnnee : {}),
         },
       }),
-      filtreDepensesHistorique
-        ? this.prisma.ecritureDepense.findMany({
-            where: { statut: 'VALIDE', ...filtreDepensesHistorique },
-          })
-        : [],
+      this.prisma.ecritureDepense.findMany({
+        where: {
+          statut: 'VALIDE',
+          ...(anneeCiblee
+            ? filtreDepensesAnnee
+            : { date: { gte: debutHistorique, lte: finMois } }),
+        },
+      }),
     ]);
 
-    const revenusDuMois = recettesDuMois.reduce((s, r) => s + Number(r.montant), 0);
-    const depensesTotalDuMois = depensesDuMois.reduce((s, d) => s + Number(d.montant), 0);
+    const revenusDuMois = recettesDuMois.reduce<number>((s, r) => s + Number(r.montant), 0);
+    const depensesTotalDuMois = depensesDuMois.reduce<number>((s, d) => s + Number(d.montant), 0);
 
     // Universitaires distincts inscrits cette année (un étudiant = 1 seule
     // fois même s'il a plusieurs inscriptions, en théorie rare).
