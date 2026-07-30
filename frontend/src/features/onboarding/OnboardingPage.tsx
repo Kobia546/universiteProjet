@@ -166,19 +166,19 @@ export function OnboardingPage() {
                   <option value="TRAVAILLEUR">Travailleur</option>
                 </select>
               </div>
-              <Input
+              {/* <Input
                 label="Date de naissance"
                 type="date"
                 value={dateNaissance}
                 onChange={(e) => setDateNaissance(e.target.value)}
                 required
-              />
+              /> */}
             </div>
-            <Input
+            {/* <Input
               label="Lieu de naissance"
               value={lieuNaissance}
               onChange={(e) => setLieuNaissance(e.target.value)}
-            />
+            /> */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Téléphone"
@@ -192,7 +192,7 @@ export function OnboardingPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
+            {/* <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} /> */}
           </div>
         </Card>
 
