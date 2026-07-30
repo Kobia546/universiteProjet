@@ -182,7 +182,7 @@ export function DashboardPage() {
           <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
             <Card className="col-span-1 lg:col-span-2">
               <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                Dernières opérations
+                Les 5 Dernières opérations
               </h2>
               <div className="rule-perforee mb-4 mt-2" />
               {stats.dernieresOperations.length === 0 ? (
@@ -245,10 +245,13 @@ export function DashboardPage() {
                 {stats.repartitionParFiliere.map((r, index) => (
                   <li key={r.filiere} className="flex items-center gap-2 text-xs text-slate-600">
                     <span
-                      className="h-2 w-2 rounded-full"
+                      className="h-2 w-2 shrink-0 rounded-full"
                       style={{ backgroundColor: COULEURS[index % COULEURS.length] }}
                     />
-                    {r.filiere} ({r.total})
+                    {r.filiere}
+                    <span className="tabular-nums ml-auto font-medium text-slate-900">
+                      ({r.total})
+                    </span>
                   </li>
                 ))}
               </ul>
