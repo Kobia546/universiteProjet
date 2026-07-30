@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsString, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { ModePaiement } from '@prisma/client';
 
 export class CreatePaiementDto {
@@ -9,8 +9,9 @@ export class CreatePaiementDto {
   @Min(0.01)
   montant: number;
 
+  @IsOptional()
   @IsString()
-  motif: string;
+  motif?: string;
 
   @IsEnum(ModePaiement, { message: 'Mode de paiement invalide' })
   modePaiement: ModePaiement;

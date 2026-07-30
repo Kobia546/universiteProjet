@@ -17,8 +17,9 @@ export class PaymentsController {
     @Query('etudiantId') etudiantId?: string,
     @Query('inscriptionId') inscriptionId?: string,
     @Query('modePaiement') modePaiement?: string,
+    @Query('anneeUniversitaireId') anneeUniversitaireId?: string,
   ) {
-    return this.paymentsService.findAll({ etudiantId, inscriptionId, modePaiement });
+    return this.paymentsService.findAll({ etudiantId, inscriptionId, modePaiement, anneeUniversitaireId });
   }
 
   @Get(':id')

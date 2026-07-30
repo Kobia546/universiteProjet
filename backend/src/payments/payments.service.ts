@@ -34,7 +34,7 @@ export class PaymentsService {
         inscriptionId: dto.inscriptionId,
         etudiantId: inscription.etudiantId,
         montant: dto.montant,
-        motif: dto.motif,
+        motif: dto.motif ?? '',
         modePaiement: dto.modePaiement,
         agentId,
       },
@@ -93,13 +93,21 @@ export class PaymentsService {
     return this.findOne(id);
   }
 
-  async findAll(params: { etudiantId?: string; inscriptionId?: string; modePaiement?: string }) {
-    const { etudiantId, inscriptionId, modePaiement } = params;
+  async findAll(params: {
+    etudiantId?: string;
+    inscriptionId?: string;
+    modePaiement?: string;
+    anneeUniversitaireId?: string;
+  }) {
+    const { etudiantId, inscriptionId, modePaiement, anneeUniversitaireId } = params;
     const paiements = await this.prisma.paiement.findMany({
       where: {
         ...(etudiantId ? { etudiantId } : {}),
         ...(inscriptionId ? { inscriptionId } : {}),
         ...(modePaiement ? { modePaiement: modePaiement as any } : {}),
+        ...(anneeUniversitaireId
+          ? { inscription: { anneeUniversitaireId } }
+          : {}),
       },
       include: {
         etudiant: true,

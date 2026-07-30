@@ -18,6 +18,21 @@ export class DashboardService {
       : await this.prisma.anneeUniversitaire.findFirst({ where: { active: true } });
 
     const filtreAnnee = anneeCiblee ? { anneeUniversitaireId: anneeCiblee.id } : {};
+    const inscriptionsAnneePourRecettes = anneeCiblee
+      ? await this.prisma.inscription.findMany({
+          where: { statut: { not: 'ANNULEE' }, anneeUniversitaireId: anneeCiblee.id },
+          select: { id: true },
+        })
+      : [];
+    const inscriptionIdsPourRecettes = inscriptionsAnneePourRecettes.map((i) => i.id);
+
+    const filtreRecettesAnnee = anneeCiblee
+      ? {
+          paiement: {
+            inscriptionId: { in: inscriptionIdsPourRecettes },
+          },
+        }
+      : {};
 
     const [
       inscriptionsAnnee,
@@ -34,7 +49,11 @@ export class DashboardService {
         include: { filiere: true, etudiant: true, paiements: { where: { statut: 'VALIDE' } } },
       }),
       this.prisma.ecritureRecette.findMany({
-        where: { statut: 'VALIDE', date: { gte: debutMois, lte: finMois } },
+        where: {
+          statut: 'VALIDE',
+          date: { gte: debutMois, lte: finMois },
+          ...(anneeCiblee ? filtreRecettesAnnee : {}),
+        },
       }),
       this.prisma.ecritureDepense.findMany({
         where: { statut: 'VALIDE', date: { gte: debutMois, lte: finMois } },
@@ -59,7 +78,11 @@ export class DashboardService {
         take: 8,
       }),
       this.prisma.ecritureRecette.findMany({
-        where: { statut: 'VALIDE', date: { gte: debutHistorique } },
+        where: {
+          statut: 'VALIDE',
+          date: { gte: debutHistorique },
+          ...(anneeCiblee ? filtreRecettesAnnee : {}),
+        },
       }),
       this.prisma.ecritureDepense.findMany({
         where: { statut: 'VALIDE', date: { gte: debutHistorique } },
