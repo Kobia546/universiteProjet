@@ -55,10 +55,6 @@ export function StudentDetailPage() {
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-500">Date de naissance</dt>
-              <dd className="text-slate-900">{formatDate(etudiant.dateNaissance)}</dd>
-            </div>
-            <div className="flex justify-between">
               <dt className="text-slate-500">Lieu de naissance</dt>
               <dd className="text-slate-900">{etudiant.lieuNaissance || '—'}</dd>
             </div>

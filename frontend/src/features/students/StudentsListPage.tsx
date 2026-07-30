@@ -9,7 +9,7 @@ import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
 import { fetchEtudiants, createEtudiant, fetchEtudiantsParStatutPaiement } from './api/studentsApi';
 import { fetchAnneesUniversitaires } from '../programs/programsApi';
-import { formatDate, formatMontant, formatMontantPdf } from '../../shared/lib/format';
+import { formatDate, formatDateHeure, formatMontant, formatMontantPdf } from '../../shared/lib/format';
 import { exporterPdf } from '../../shared/lib/exporterPdf';
 import type { CreateEtudiantInput, Sexe } from './types';
 
@@ -298,7 +298,9 @@ export function StudentsListPage() {
                         <Badge variant="default">Aucune inscription</Badge>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-slate-500">{formatDate(etudiant.createdAt)}</td>
+                    <td className="px-5 py-3 whitespace-nowrap text-slate-500">
+                      {formatDateHeure(etudiant.createdAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

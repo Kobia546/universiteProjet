@@ -28,7 +28,7 @@ export function OnboardingPage() {
   const [prenom, setPrenom] = useState('');
   const [sexe, setSexe] = useState<Sexe>('M');
   const [type, setType] = useState<TypeEtudiant>('ETUDIANT');
-  const [dateNaissance, setDateNaissance] = useState('');
+  const [dateNaissance] = useState(() => '2000-01-01');
   const [lieuNaissance, setLieuNaissance] = useState('');
   const [telephone, setTelephone] = useState('');
   const [email, setEmail] = useState('');
@@ -98,7 +98,7 @@ export function OnboardingPage() {
   });
 
   const peutValider =
-    nom && prenom && dateNaissance && filiereId && anneeUniversitaireId &&
+    nom && prenom && filiereId && anneeUniversitaireId &&
     (!enregistrerPaiement || (montant && Number(montant) > 0 && motif));
 
   function handleSubmit() {
@@ -121,7 +121,7 @@ export function OnboardingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl">
       <PageHeader
         title="Nouvel universitaire"
         description="Fiche, inscription et premier paiement en une seule étape"
@@ -129,12 +129,17 @@ export function OnboardingPage() {
 
       <div className="space-y-6">
         {/* ---- Étudiant ---- */}
-        <Card>
-          <h2 className="mb-4 font-serif text-[15px] font-semibold text-slate-900">
-            Informations de l'étudiant
-          </h2>
+        <Card className="p-6 sm:p-8">
+          <div className="mb-5">
+            <h2 className="font-serif text-[15px] font-semibold text-slate-900">
+              Informations de l'étudiant
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Les informations essentielles sont regroupées pour gagner du temps.
+            </p>
+          </div>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} required />
               <Input
                 label="Prénom"
@@ -143,7 +148,7 @@ export function OnboardingPage() {
                 required
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-slate-700">Sexe</label>
                 <select
@@ -166,20 +171,13 @@ export function OnboardingPage() {
                   <option value="TRAVAILLEUR">Travailleur</option>
                 </select>
               </div>
-              {/* <Input
-                label="Date de naissance"
-                type="date"
-                value={dateNaissance}
-                onChange={(e) => setDateNaissance(e.target.value)}
-                required
-              /> */}
             </div>
             {/* <Input
               label="Lieu de naissance"
               value={lieuNaissance}
               onChange={(e) => setLieuNaissance(e.target.value)}
             /> */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input
                 label="Téléphone"
                 value={telephone}
@@ -192,14 +190,14 @@ export function OnboardingPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            {/* <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} /> */}
+            <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
           </div>
         </Card>
 
         {/* ---- Inscription ---- */}
-        <Card>
+        <Card className="p-6 sm:p-8">
           <h2 className="mb-4 font-serif text-[15px] font-semibold text-slate-900">Inscription</h2>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-700">Année universitaire</label>
               <select
@@ -244,11 +242,9 @@ export function OnboardingPage() {
         </Card>
 
         {/* ---- Paiement initial ---- */}
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-              Premier paiement
-            </h2>
+        <Card className="p-6 sm:p-8">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="font-serif text-[15px] font-semibold text-slate-900">Premier paiement</h2>
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input
                 type="checkbox"
@@ -270,7 +266,7 @@ export function OnboardingPage() {
                   Montant suggéré (règle configurée) — {formatMontant(montantSuggere)}
                 </button>
               )}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Input
                   label="Montant"
                   type="number"
@@ -305,7 +301,7 @@ export function OnboardingPage() {
           </p>
         )}
 
-        <div className="flex justify-end gap-3 pb-6">
+        <div className="flex flex-col-reverse gap-3 pb-6 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={() => navigate('/etudiants')}>
             Annuler
           </Button>

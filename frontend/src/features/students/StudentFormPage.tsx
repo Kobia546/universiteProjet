@@ -12,7 +12,7 @@ const CHAMPS_INITIAUX: CreateEtudiantInput = {
   nom: '',
   prenom: '',
   sexe: 'M',
-  dateNaissance: '',
+  dateNaissance: '2000-01-01',
   lieuNaissance: '',
   telephone: '',
   email: '',
@@ -75,13 +75,6 @@ export function StudentFormPage() {
                 <option value="F">Féminin</option>
               </select>
             </div>
-            <Input
-              label="Date de naissance"
-              type="date"
-              value={form.dateNaissance}
-              onChange={(e) => handleChange('dateNaissance', e.target.value)}
-              required
-            />
           </div>
 
           <Input

@@ -97,13 +97,6 @@ export function StudentEditPage() {
                 <option value="TRAVAILLEUR">Travailleur</option>
               </select>
             </div>
-            <Input
-              label="Date de naissance"
-              type="date"
-              value={form.dateNaissance}
-              onChange={(e) => handleChange('dateNaissance', e.target.value)}
-             
-            />
           </div>
 
           <Input
