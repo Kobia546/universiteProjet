@@ -37,7 +37,6 @@ export function DashboardPage() {
 
   const libelleAnnee = stats?.anneeUniversitaire?.libelle ?? '';
   const dernieresOperationsAffichees = stats?.dernieresOperations.slice(0, 5) ?? [];
-  const periodeUniversitaire = stats?.anneeUniversitaire ? `Année universitaire ${stats.anneeUniversitaire.libelle}` : '';
 
   return (
     <div>
@@ -183,14 +182,9 @@ export function DashboardPage() {
 
           <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
             <Card className="col-span-1 lg:col-span-2">
-              <div className="flex flex-col gap-1">
-                <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                  Les 5 Dernières opérations
-                </h2>
-                {periodeUniversitaire ? (
-                  <span className="text-xs text-slate-500">{periodeUniversitaire}</span>
-                ) : null}
-              </div>
+              <h2 className="font-serif text-[15px] font-semibold text-slate-900">
+                Les 5 Dernières opérations{libelleAnnee ? ` ${libelleAnnee}` : ''}
+              </h2>
               <div className="rule-perforee mb-4 mt-2" />
               {dernieresOperationsAffichees.length === 0 ? (
                 <p className="text-sm text-slate-500">Aucune opération pour le moment.</p>
