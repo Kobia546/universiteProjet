@@ -95,7 +95,7 @@ export function NewPaymentPage() {
     },
   });
 
-  const peutValider = inscriptionId && montant && motif && Number(montant) > 0;
+  const peutValider = inscriptionId && montant && Number(montant) > 0;
 
   return (
     <div className="mx-auto max-w-2xl">

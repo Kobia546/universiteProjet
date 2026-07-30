@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
@@ -6,14 +7,21 @@ import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
 import { fetchPaiements } from './api/paymentsApi';
+import { fetchAnneesUniversitaires } from '../programs/programsApi';
 import { formatDateHeure, formatMontant } from '../../shared/lib/format';
 
 export function PaymentsListPage() {
   const navigate = useNavigate();
+  const [anneeFiltre, setAnneeFiltre] = useState('');
 
   const { data: paiements, isLoading } = useQuery({
-    queryKey: ['paiements'],
-    queryFn: () => fetchPaiements(),
+    queryKey: ['paiements', anneeFiltre],
+    queryFn: () => fetchPaiements({ anneeUniversitaireId: anneeFiltre || undefined }),
+  });
+
+  const { data: annees } = useQuery({
+    queryKey: ['annees-universitaires'],
+    queryFn: fetchAnneesUniversitaires,
   });
 
   return (
@@ -22,10 +30,26 @@ export function PaymentsListPage() {
         title="Paiements"
         description="Historique de tous les paiements enregistrés"
         action={
-          <Button onClick={() => navigate('/paiements/nouveau')}>
-            <Plus className="h-4 w-4" />
-            Nouveau paiement
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-full sm:w-[220px]">
+              <select
+                value={anneeFiltre}
+                onChange={(e) => setAnneeFiltre(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">Tout</option>
+                {annees?.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.libelle} {a.active ? '(active)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button onClick={() => navigate('/paiements/nouveau')}>
+              <Plus className="h-4 w-4" />
+              Nouveau paiement
+            </Button>
+          </div>
         }
       />
 

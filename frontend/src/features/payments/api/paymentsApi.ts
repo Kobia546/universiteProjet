@@ -35,13 +35,14 @@ export interface Paiement {
 export interface CreatePaiementInput {
   inscriptionId: string;
   montant: number;
-  motif: string;
+  motif?: string;
   modePaiement: ModePaiement;
 }
 
 export async function fetchPaiements(params?: {
   etudiantId?: string;
   inscriptionId?: string;
+  anneeUniversitaireId?: string;
 }): Promise<Paiement[]> {
   const { data } = await apiClient.get<Paiement[]>('/paiements', { params });
   return data;
