@@ -51,11 +51,14 @@ export function OnboardingPage() {
   const [prenom, setPrenom] = useState('');
   const [sexe, setSexe] = useState<Sexe>('M');
   const [type, setType] = useState<TypeEtudiant>('ETUDIANT');
-  const [dateNaissance, setDateNaissance] = useState('');
-  const [lieuNaissance, setLieuNaissance] = useState('');
+  // Date de naissance / lieu de naissance / adresse : masqués pour le moment
+  // (pas nécessaires dans l'immédiat) — on garde une valeur par défaut
+  // technique car la base l'exige encore, à retirer si besoin plus tard.
+  const [dateNaissance] = useState('2000-01-01');
+  const [lieuNaissance] = useState('');
   const [telephone, setTelephone] = useState('');
   const [email, setEmail] = useState('');
-  const [adresse, setAdresse] = useState('');
+  const [adresse] = useState('');
 
   // Inscription
   const [anneeUniversitaireId, setAnneeUniversitaireId] = useState('');
@@ -125,7 +128,7 @@ export function OnboardingPage() {
   });
 
   const peutValider =
-    (mode === 'existant' ? !!etudiantId : !!(nom && prenom && dateNaissance)) &&
+    (mode === 'existant' ? !!etudiantId : !!(nom && prenom)) &&
     filiereId &&
     anneeUniversitaireId &&
     (!enregistrerPaiement || (montant && Number(montant) > 0 && motif));
@@ -256,7 +259,7 @@ export function OnboardingPage() {
                   required
                 />
               </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-slate-700">Sexe</label>
                   <select
@@ -279,6 +282,7 @@ export function OnboardingPage() {
                     <option value="TRAVAILLEUR">Travailleur</option>
                   </select>
                 </div>
+                {/* Date de naissance — masquée pour le moment, pas nécessaire dans l'immédiat
                 <Input
                   label="Date de naissance"
                   type="date"
@@ -286,12 +290,15 @@ export function OnboardingPage() {
                   onChange={(e) => setDateNaissance(e.target.value)}
                   required
                 />
+                */}
               </div>
+              {/* Lieu de naissance — masqué pour le moment
               <Input
                 label="Lieu de naissance"
                 value={lieuNaissance}
                 onChange={(e) => setLieuNaissance(e.target.value)}
               />
+              */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Input
                   label="Téléphone"
@@ -305,7 +312,9 @@ export function OnboardingPage() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
+              {/* Adresse — masquée pour le moment
               <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
+              */}
             </div>
           </Card>
         )}
