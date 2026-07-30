@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Wallet, Pencil } from 'lucide-react';
+import {  Wallet, Pencil } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
