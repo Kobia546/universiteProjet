@@ -36,6 +36,12 @@ export function DashboardPage() {
   });
 
   const libelleAnnee = stats?.anneeUniversitaire?.libelle ?? '';
+  const dernieresOperationsAffichees = stats?.dernieresOperations.slice(0, 5) ?? [];
+  const periodeDernieresOperations = dernieresOperationsAffichees.length
+    ? `${formatDate(dernieresOperationsAffichees[dernieresOperationsAffichees.length - 1].date)} — ${formatDate(
+        dernieresOperationsAffichees[0].date,
+      )}`
+    : '';
 
   return (
     <div>
@@ -181,17 +187,22 @@ export function DashboardPage() {
 
           <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
             <Card className="col-span-1 lg:col-span-2">
-              <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                Les 5 Dernières opérations
-              </h2>
+              <div className="flex flex-col gap-1">
+                <h2 className="font-serif text-[15px] font-semibold text-slate-900">
+                  Les 5 Dernières opérations
+                </h2>
+                {periodeDernieresOperations ? (
+                  <span className="text-xs text-slate-500">Période : {periodeDernieresOperations}</span>
+                ) : null}
+              </div>
               <div className="rule-perforee mb-4 mt-2" />
-              {stats.dernieresOperations.length === 0 ? (
+              {dernieresOperationsAffichees.length === 0 ? (
                 <p className="text-sm text-slate-500">Aucune opération pour le moment.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[420px] text-sm">
                     <tbody className="divide-y divide-slate-100">
-                      {stats.dernieresOperations.slice(0, 5).map((op) => (
+                      {dernieresOperationsAffichees.map((op) => (
                         <tr key={`${op.type}-${op.id}`}>
                           <td className="py-2.5 text-slate-700">{op.libelle}</td>
                           <td className="py-2.5 text-right text-xs text-slate-400">
