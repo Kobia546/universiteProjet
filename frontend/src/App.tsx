@@ -8,7 +8,6 @@ import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { StudentDetailPage } from './features/students/StudentDetailPage';
 import { StudentEditPage } from './features/students/StudentEditPage';
 import { EnrollmentsListPage } from './features/enrollments/EnrollmentsListPage';
-import { NewEnrollmentPage } from './features/enrollments/NewEnrollmentPage';
 import { EnrollmentDetailPage } from './features/enrollments/EnrollmentDetailPage';
 import { PaymentsListPage } from './features/payments/PaymentsListPage';
 import { NewPaymentPage } from './features/payments/NewPaymentPage';
@@ -34,11 +33,10 @@ export function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="etudiants" element={<StudentsListPage />} />
-          <Route path="etudiants/nouveau" element={<OnboardingPage />} />
           <Route path="etudiants/:id" element={<StudentDetailPage />} />
           <Route path="etudiants/:id/modifier" element={<StudentEditPage />} />
           <Route path="inscriptions" element={<EnrollmentsListPage />} />
-          <Route path="inscriptions/nouvelle" element={<NewEnrollmentPage />} />
+          <Route path="inscriptions/nouvelle" element={<OnboardingPage />} />
           <Route path="inscriptions/:id" element={<EnrollmentDetailPage />} />
           <Route path="paiements" element={<PaymentsListPage />} />
           <Route path="paiements/nouveau" element={<NewPaymentPage />} />

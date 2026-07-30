@@ -3,11 +3,12 @@ import type { Sexe, TypeEtudiant } from '../../students/types';
 import type { ModePaiement } from '../../payments/api/paymentsApi';
 
 export interface CreateOnboardingInput {
-  nom: string;
-  prenom: string;
-  sexe: Sexe;
+  etudiantId?: string;
+  nom?: string;
+  prenom?: string;
+  sexe?: Sexe;
   type?: TypeEtudiant;
-  dateNaissance: string;
+  dateNaissance?: string;
   lieuNaissance?: string;
   telephone?: string;
   email?: string;

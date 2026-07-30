@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
 import { Input } from '../../shared/components/ui/Input';
 import { fetchFilieres, fetchAnneesUniversitaires } from '../programs/programsApi';
 import { fetchReglesPaiement } from '../payment-rules/api/paymentRulesApi';
+import { fetchEtudiants, fetchEtudiant } from '../students/api/studentsApi';
 import { createOnboarding } from './api/onboardingApi';
 import { formatMontant } from '../../shared/lib/format';
 import type { Sexe, TypeEtudiant } from '../students/types';
@@ -22,14 +23,36 @@ const MODES_PAIEMENT: { value: ModePaiement; label: string }[] = [
 export function OnboardingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const etudiantPreselectionne = searchParams.get('etudiantId') ?? '';
 
-  // Étudiant
+  // Mode : universitaire existant ou nouveau
+  const [mode, setMode] = useState<'existant' | 'nouveau'>(
+    etudiantPreselectionne ? 'existant' : 'nouveau',
+  );
+
+  // Recherche d'un universitaire existant
+  const [recherche, setRecherche] = useState('');
+  const [etudiantId, setEtudiantId] = useState(etudiantPreselectionne);
+
+  const { data: etudiants } = useQuery({
+    queryKey: ['etudiants', recherche],
+    queryFn: () => fetchEtudiants(recherche || undefined),
+    enabled: !!recherche && mode === 'existant',
+  });
+  const { data: etudiantSelectionne } = useQuery({
+    queryKey: ['etudiant', etudiantId],
+    queryFn: () => fetchEtudiant(etudiantId),
+    enabled: !!etudiantId && mode === 'existant',
+  });
+
+  // Nouvel universitaire
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [sexe, setSexe] = useState<Sexe>('M');
   const [type, setType] = useState<TypeEtudiant>('ETUDIANT');
-  const [dateNaissance] = useState(() => '2000-01-01');
-  const [lieuNaissance] = useState(() => '-');
+  const [dateNaissance, setDateNaissance] = useState('');
+  const [lieuNaissance, setLieuNaissance] = useState('');
   const [telephone, setTelephone] = useState('');
   const [email, setEmail] = useState('');
   const [adresse, setAdresse] = useState('');
@@ -55,7 +78,7 @@ export function OnboardingPage() {
     enabled: !!anneeUniversitaireId,
   });
 
-  useMemo(() => {
+  useEffect(() => {
     if (!anneeUniversitaireId && annees?.length) {
       const active = annees.find((a) => a.active) ?? annees[0];
       setAnneeUniversitaireId(active.id);
@@ -70,22 +93,26 @@ export function OnboardingPage() {
     );
   }, [filieres, anneeUniversitaireId]);
 
+  // Le type utilisé pour la suggestion de montant : celui de l'universitaire
+  // existant sélectionné, ou celui choisi dans le formulaire du nouveau.
+  const typeEffectif = mode === 'existant' ? etudiantSelectionne?.type ?? 'ETUDIANT' : type;
+
   // Suggestion du montant d'inscription, calculée côté client à partir des
   // règles de paiement déjà configurées (même logique de spécificité que le
   // backend : filière+type > filière seule > type seul > générale).
   const montantSuggere = useMemo(() => {
     if (!regles || !filiereId) return null;
     const candidates = regles.filter(
-      (r) => (r.filiereId === filiereId || r.filiereId === null) &&
-        (r.type === type || r.type === null),
+      (r) =>
+        (r.filiereId === filiereId || r.filiereId === null) &&
+        (r.type === typeEffectif || r.type === null),
     );
-    const score = (r: (typeof candidates)[number]) =>
-      (r.filiereId ? 2 : 0) + (r.type ? 1 : 0);
+    const score = (r: (typeof candidates)[number]) => (r.filiereId ? 2 : 0) + (r.type ? 1 : 0);
     candidates.sort((a, b) => score(b) - score(a));
     const meilleure = candidates[0];
     if (!meilleure) return null;
     return Math.round((Number(meilleure.montantTotal) * meilleure.pourcentageInscription) / 100);
-  }, [regles, filiereId, type]);
+  }, [regles, filiereId, typeEffectif]);
 
   const mutation = useMutation({
     mutationFn: createOnboarding,
@@ -93,25 +120,31 @@ export function OnboardingPage() {
       queryClient.invalidateQueries({ queryKey: ['etudiants'] });
       queryClient.invalidateQueries({ queryKey: ['inscriptions'] });
       queryClient.invalidateQueries({ queryKey: ['paiements'] });
-      navigate('/etudiants');
+      navigate('/inscriptions');
     },
   });
 
   const peutValider =
-    nom && prenom && filiereId && anneeUniversitaireId &&
+    (mode === 'existant' ? !!etudiantId : !!(nom && prenom && dateNaissance)) &&
+    filiereId &&
+    anneeUniversitaireId &&
     (!enregistrerPaiement || (montant && Number(montant) > 0 && motif));
 
   function handleSubmit() {
     mutation.mutate({
-      nom,
-      prenom,
-      sexe,
-      type,
-      dateNaissance,
-      lieuNaissance: lieuNaissance || undefined,
-      telephone: telephone || undefined,
-      email: email || undefined,
-      adresse: adresse || undefined,
+      ...(mode === 'existant'
+        ? { etudiantId }
+        : {
+            nom,
+            prenom,
+            sexe,
+            type,
+            dateNaissance,
+            lieuNaissance: lieuNaissance || undefined,
+            telephone: telephone || undefined,
+            email: email || undefined,
+            adresse: adresse || undefined,
+          }),
       filiereId,
       anneeUniversitaireId,
       paiementInitial: enregistrerPaiement
@@ -123,76 +156,159 @@ export function OnboardingPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
-        title="Nouvel universitaire"
-        description="Fiche, inscription et premier paiement en une seule étape"
+        title="Nouvelle inscription"
+        description="Universitaire (nouveau ou existant), filière/année et premier paiement en une seule étape"
       />
 
       <div className="space-y-6">
-        {/* ---- Étudiant ---- */}
-        <Card className="p-6 sm:p-8">
-          <div className="mb-5">
-            <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-              Informations de l'étudiant
+        {/* ---- Choix : existant ou nouveau ---- */}
+        {!etudiantPreselectionne && (
+          <div className="flex gap-1 rounded-lg bg-slate-100 p-1 w-fit">
+            {(
+              [
+                { key: 'nouveau', label: 'Nouvel universitaire' },
+                { key: 'existant', label: 'Universitaire existant' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => {
+                  setMode(tab.key);
+                  setEtudiantId('');
+                  setRecherche('');
+                }}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  mode === tab.key
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {mode === 'existant' ? (
+          <Card className="p-6 sm:p-8">
+            <h2 className="mb-4 font-serif text-[15px] font-semibold text-slate-900">
+              Universitaire
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Les informations essentielles sont regroupées pour gagner du temps.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Input label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} required />
+            {!etudiantPreselectionne && (
               <Input
-                label="Prénom"
-                value={prenom}
-                onChange={(e) => setPrenom(e.target.value)}
-                required
+                placeholder="Rechercher par nom, prénom ou matricule..."
+                value={recherche}
+                onChange={(e) => setRecherche(e.target.value)}
               />
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-700">Sexe</label>
-                <select
-                  value={sexe}
-                  onChange={(e) => setSexe(e.target.value as Sexe)}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                >
-                  <option value="M">Masculin</option>
-                  <option value="F">Féminin</option>
-                </select>
+            )}
+            {!etudiantPreselectionne && recherche && etudiants && etudiants.length > 0 && !etudiantId && (
+              <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                {etudiants.map((etudiant) => (
+                  <button
+                    key={etudiant.id}
+                    type="button"
+                    onClick={() => {
+                      setEtudiantId(etudiant.id);
+                      setRecherche('');
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span>
+                      {etudiant.prenom} {etudiant.nom}
+                    </span>
+                    <span className="font-mono text-xs text-slate-400">{etudiant.matricule}</span>
+                  </button>
+                ))}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-700">Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value as TypeEtudiant)}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                >
-                  <option value="ETUDIANT">Étudiant</option>
-                  <option value="TRAVAILLEUR">Travailleur</option>
-                </select>
+            )}
+            {etudiantSelectionne && (
+              <div className="mt-2 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm">
+                <span className="font-medium text-brand-900">
+                  {etudiantSelectionne.prenom} {etudiantSelectionne.nom} —{' '}
+                  <span className="font-mono text-xs">{etudiantSelectionne.matricule}</span>
+                </span>
+                {!etudiantPreselectionne && (
+                  <button
+                    type="button"
+                    onClick={() => setEtudiantId('')}
+                    className="text-xs text-brand-700 underline"
+                  >
+                    Changer
+                  </button>
+                )}
               </div>
+            )}
+          </Card>
+        ) : (
+          <Card className="p-6 sm:p-8">
+            <div className="mb-5">
+              <h2 className="font-serif text-[15px] font-semibold text-slate-900">
+                Informations de l'universitaire
+              </h2>
             </div>
-            {/* <Input
-              label="Lieu de naissance"
-              value={lieuNaissance}
-              onChange={(e) => setLieuNaissance(e.target.value)}
-            /> */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Input label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} required />
+                <Input
+                  label="Prénom"
+                  value={prenom}
+                  onChange={(e) => setPrenom(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-slate-700">Sexe</label>
+                  <select
+                    value={sexe}
+                    onChange={(e) => setSexe(e.target.value as Sexe)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="M">Masculin</option>
+                    <option value="F">Féminin</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-slate-700">Type</label>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value as TypeEtudiant)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="ETUDIANT">Étudiant</option>
+                    <option value="TRAVAILLEUR">Travailleur</option>
+                  </select>
+                </div>
+                <Input
+                  label="Date de naissance"
+                  type="date"
+                  value={dateNaissance}
+                  onChange={(e) => setDateNaissance(e.target.value)}
+                  required
+                />
+              </div>
               <Input
-                label="Téléphone"
-                value={telephone}
-                onChange={(e) => setTelephone(e.target.value)}
+                label="Lieu de naissance"
+                value={lieuNaissance}
+                onChange={(e) => setLieuNaissance(e.target.value)}
               />
-              <Input
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Input
+                  label="Téléphone"
+                  value={telephone}
+                  onChange={(e) => setTelephone(e.target.value)}
+                />
+                <Input
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
             </div>
-            <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* ---- Inscription ---- */}
         <Card className="p-6 sm:p-8">
@@ -302,7 +418,7 @@ export function OnboardingPage() {
         )}
 
         <div className="flex flex-col-reverse gap-3 pb-6 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={() => navigate('/etudiants')}>
+          <Button type="button" variant="secondary" onClick={() => navigate('/inscriptions')}>
             Annuler
           </Button>
           <Button
@@ -311,7 +427,7 @@ export function OnboardingPage() {
             isLoading={mutation.isPending}
             onClick={handleSubmit}
           >
-            Créer l'étudiant{enregistrerPaiement ? ' et enregistrer le paiement' : ''}
+            Créer l'inscription{enregistrerPaiement ? ' et enregistrer le paiement' : ''}
           </Button>
         </div>
       </div>

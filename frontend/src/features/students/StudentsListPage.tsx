@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
-import { Plus, Search, FileDown, Upload } from 'lucide-react';
+import { Search, FileDown, Upload } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
@@ -173,10 +173,6 @@ export function StudentsListPage() {
             <Button variant="secondary" onClick={exporter}>
               <FileDown className="h-4 w-4" />
               Exporter PDF
-            </Button>
-            <Button onClick={() => navigate('/etudiants/nouveau')}>
-              <Plus className="h-4 w-4" />
-              Nouvel universitaire
             </Button>
           </div>
         }
