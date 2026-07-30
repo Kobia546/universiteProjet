@@ -75,20 +75,20 @@ export function StudentFormPage() {
                 <option value="F">Féminin</option>
               </select>
             </div>
-            <Input
+            {/* <Input
               label="Date de naissance"
               type="date"
               value={form.dateNaissance}
               onChange={(e) => handleChange('dateNaissance', e.target.value)}
               required
-            />
+            /> */}
           </div>
 
-          <Input
+          {/* <Input
             label="Lieu de naissance"
             value={form.lieuNaissance}
             onChange={(e) => handleChange('lieuNaissance', e.target.value)}
-          />
+          /> */}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
@@ -104,11 +104,11 @@ export function StudentFormPage() {
             />
           </div>
 
-          <Input
+          {/* <Input
             label="Adresse"
             value={form.adresse}
             onChange={(e) => handleChange('adresse', e.target.value)}
-          />
+          /> */}
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Informations complémentaires</label>
