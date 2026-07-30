@@ -32,10 +32,7 @@ export function StudentDetailPage() {
               <Pencil className="h-4 w-4" />
               Modifier
             </Button>
-            <Button onClick={() => navigate(`/inscriptions/nouvelle?etudiantId=${etudiant.id}`)}>
-              <Plus className="h-4 w-4" />
-              Nouvelle inscription
-            </Button>
+          
           </div>
         }
       />
