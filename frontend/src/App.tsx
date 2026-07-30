@@ -14,6 +14,8 @@ import { PaymentsListPage } from './features/payments/PaymentsListPage';
 import { NewPaymentPage } from './features/payments/NewPaymentPage';
 import { PaymentDetailPage } from './features/payments/PaymentDetailPage';
 import { AccountingPage } from './features/accounting/AccountingPage';
+import { ConsultationsPage } from './features/consultations/ConsultationsPage';
+import { EditionsPage } from './features/editions/EditionsPage';
 import { SettingsPage } from './features/payment-rules/SettingsPage';
 
 export function App() {
@@ -42,6 +44,8 @@ export function App() {
           <Route path="paiements/nouveau" element={<NewPaymentPage />} />
           <Route path="paiements/:id" element={<PaymentDetailPage />} />
           <Route path="comptabilite" element={<AccountingPage />} />
+          <Route path="consultations" element={<ConsultationsPage />} />
+          <Route path="editions" element={<EditionsPage />} />
           <Route path="parametres" element={<SettingsPage />} />
         </Route>
 

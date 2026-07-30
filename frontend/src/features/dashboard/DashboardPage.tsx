@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Users, UserPlus, TrendingUp, TrendingDown, Clock, AlertTriangle } from 'lucide-react';
+import { Users, GraduationCap, TrendingUp, TrendingDown, Gauge, BadgePercent } from 'lucide-react';
 import {
   PieChart,
   Pie,
@@ -35,13 +35,15 @@ export function DashboardPage() {
     queryFn: () => fetchDashboardStats(anneeSelectionnee || undefined),
   });
 
+  const libelleAnnee = stats?.anneeUniversitaire?.libelle ?? '';
+
   return (
     <div>
       <PageHeader
         title="Tableau de bord"
         description={
           stats?.anneeUniversitaire
-            ? `Vue d'ensemble — année ${stats.anneeUniversitaire.libelle}`
+            ? `Vue d'ensemble — année ${libelleAnnee}`
             : "Vue d'ensemble de l'activité de l'université"
         }
         action={
@@ -65,44 +67,48 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <KpiCard label="Étudiants (année sélectionnée)" value={String(stats.totalEtudiants)} icon={Users} />
             <KpiCard
-              label="Inscriptions (année sélectionnée)"
-              value={String(stats.nouveauxInscrits)}
-              icon={UserPlus}
+              label={`Universitaires ${libelleAnnee}`}
+              value={String(stats.totalUniversitaires)}
+              icon={Users}
             />
             <KpiCard
-              label="Revenus du mois"
+              label={`Inscriptions ${libelleAnnee}`}
+              value={String(stats.nouveauxInscrits)}
+              icon={GraduationCap}
+            />
+            <KpiCard
+              label="Recettes du mois en cours"
               value={formatMontant(stats.revenusDuMois)}
               icon={TrendingUp}
             />
             <KpiCard
-              label="Dépenses du mois"
+              label="Dépenses du mois en cours"
               value={formatMontant(stats.depensesDuMois)}
               icon={TrendingDown}
             />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Card className="flex items-center gap-3 border-red-100 bg-red-50/50">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-red-500" />
+            <Card className="flex items-center gap-3 border-brand-100 bg-brand-50/50">
+              <BadgePercent className="h-5 w-5 shrink-0 text-brand-600" />
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-red-500">
-                  Total impayé (toutes inscriptions)
+                <p className="text-xs font-medium uppercase tracking-wide text-brand-600">
+                  Taux de règlement des inscriptions {libelleAnnee}
                 </p>
-                <p className="tabular-nums font-serif text-xl font-semibold text-red-700">
-                  {formatMontant(stats.totalImpaye)}
+                <p className="tabular-nums font-serif text-xl font-semibold text-brand-800">
+                  {stats.tauxReglementInscriptions.toFixed(0)} %
                 </p>
               </div>
             </Card>
             <Card className="flex items-center gap-3 border-amber-100 bg-amber-50/50">
-              <Clock className="h-5 w-5 shrink-0 text-amber-600" />
+              <Gauge className="h-5 w-5 shrink-0 text-amber-600" />
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-amber-600">
-                  Échéances en attente ou en retard
+                  Taux de règlement de la scolarité {libelleAnnee}
                 </p>
                 <p className="tabular-nums font-serif text-xl font-semibold text-amber-800">
-                  {stats.paiementsEnAttente.nombre} — {formatMontant(stats.paiementsEnAttente.montant)}
+                  {stats.tauxReglementScolarite.toFixed(0)} %
                 </p>
               </div>
             </Card>
@@ -130,11 +136,11 @@ export function DashboardPage() {
 
             <Card>
               <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                Répartition par type
+                Répartition par type d'universitaire {libelleAnnee}
               </h2>
               <div className="rule-perforee mb-4 mt-2" />
               {stats.repartitionParType.length === 0 ? (
-                <p className="text-sm text-slate-500">Aucun étudiant pour le moment.</p>
+                <p className="text-sm text-slate-500">Aucun universitaire pour le moment.</p>
               ) : (
                 <div className="h-36">
                   <ResponsiveContainer width="100%" height="100%">
@@ -186,13 +192,18 @@ export function DashboardPage() {
                   <table className="w-full min-w-[420px] text-sm">
                     <tbody className="divide-y divide-slate-100">
                       {stats.dernieresOperations.map((op) => (
-                        <tr key={op.id}>
+                        <tr key={`${op.type}-${op.id}`}>
                           <td className="py-2.5 text-slate-700">{op.libelle}</td>
                           <td className="py-2.5 text-right text-xs text-slate-400">
                             {formatDate(op.date)}
                           </td>
-                          <td className="tabular-nums py-2.5 text-right font-mono font-medium text-brand-700">
-                            +{formatMontant(op.montant)}
+                          <td
+                            className={`tabular-nums py-2.5 text-right font-mono font-medium ${
+                              op.type === 'depense' ? 'text-red-600' : 'text-brand-700'
+                            }`}
+                          >
+                            {op.type === 'depense' ? '-' : '+'}
+                            {formatMontant(op.montant)}
                           </td>
                         </tr>
                       ))}
@@ -204,7 +215,7 @@ export function DashboardPage() {
 
             <Card>
               <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                Répartition par filière
+                Répartition par filière {libelleAnnee}
               </h2>
               <div className="rule-perforee mb-4 mt-2" />
               {stats.repartitionParFiliere.length === 0 ? (

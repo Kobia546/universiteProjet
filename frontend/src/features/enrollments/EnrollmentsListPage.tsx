@@ -69,8 +69,8 @@ export function EnrollmentsListPage() {
 
       <p className="mb-4 text-xs text-slate-500">
         À utiliser pour une personne déjà connue dans l'app (ex : réinscription l'année suivante).
-        Pour une toute nouvelle personne, utilise plutôt "Nouvel étudiant/travailleur" depuis le
-        menu Étudiants & Travailleurs.
+        Pour une toute nouvelle personne, utilise plutôt "Nouvel universitaire" depuis le
+        menu Universitaires.
       </p>
 
       <Card className="overflow-hidden p-0">

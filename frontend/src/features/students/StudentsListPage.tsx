@@ -151,7 +151,7 @@ export function StudentsListPage() {
   return (
     <div>
       <PageHeader
-        title="Étudiants & Travailleurs"
+        title="Universitaires"
         description="Gérez les fiches et le parcours de chaque étudiant"
         action={
           <div className="flex flex-wrap gap-2">
@@ -176,7 +176,7 @@ export function StudentsListPage() {
             </Button>
             <Button onClick={() => navigate('/etudiants/nouveau')}>
               <Plus className="h-4 w-4" />
-              Nouvel étudiant/travailleur
+              Nouvel universitaire
             </Button>
           </div>
         }

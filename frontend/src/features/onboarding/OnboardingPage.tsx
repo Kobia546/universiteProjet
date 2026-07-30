@@ -123,7 +123,7 @@ export function OnboardingPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        title="Nouvel étudiant/travailleur"
+        title="Nouvel universitaire"
         description="Fiche, inscription et premier paiement en une seule étape"
       />
 
