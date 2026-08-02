@@ -26,7 +26,7 @@ import {
   deleteReglePaiement,
   type TypeEtudiant,
 } from './api/paymentRulesApi';
-import { fetchCarnetsRecu, configurerCarnetRecu } from './api/carnetRecuApi';
+import { fetchCarnetsRecu, createCarnetRecu, fermerCarnetRecu } from './api/carnetRecuApi';
 import { formatDate, formatMontant } from '../../shared/lib/format';
 
 type Onglet = 'filieres' | 'matieres' | 'annees' | 'regles' | 'carnets';
@@ -634,10 +634,8 @@ function ReglesTab() {
 }
 
 function CarnetsRecuTab() {
-  const anneeCourante = new Date().getFullYear();
-  const [annee, setAnnee] = useState(String(anneeCourante));
-  const [prefixe, setPrefixe] = useState('REC');
-  const [prochainNumero, setProchainNumero] = useState('1');
+  const [numeroDebut, setNumeroDebut] = useState('');
+  const [numeroFin, setNumeroFin] = useState('');
   const queryClient = useQueryClient();
 
   const { data: carnets, isLoading } = useQuery({
@@ -645,63 +643,67 @@ function CarnetsRecuTab() {
     queryFn: fetchCarnetsRecu,
   });
 
-  const configurerMutation = useMutation({
-    mutationFn: configurerCarnetRecu,
+  const creerMutation = useMutation({
+    mutationFn: createCarnetRecu,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['carnets-recu'] });
+      setNumeroDebut('');
+      setNumeroFin('');
     },
   });
 
-  function commencerEdition(carnet: NonNullable<typeof carnets>[number]) {
-    setAnnee(String(carnet.annee));
-    setPrefixe(carnet.prefixe);
-    setProchainNumero(String(carnet.prochainNumero));
-  }
+  const fermerMutation = useMutation({
+    mutationFn: fermerCarnetRecu,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['carnets-recu'] }),
+  });
 
   return (
     <div className="space-y-6">
       <Card>
         <h2 className="mb-1 font-serif text-[15px] font-semibold text-slate-900">
-          Configurer un carnet de reçu
+          Nouveau carnet (plage de numéros)
         </h2>
         <p className="mb-4 text-xs text-slate-500">
-          Fais correspondre la numérotation de l'app avec le carnet papier réellement utilisé
-          cette année — par exemple si le carnet physique en cours commence au numéro 000450, mets
-          "Prochain numéro" à 450 pour que les prochains reçus s'enchaînent correctement.
+          Définis la plage de numéros que couvre un carnet physique (ex : 90 à 95). Au moment d'un
+          paiement, le comptable saisit le numéro exact du reçu papier utilisé — l'app vérifie
+          qu'il appartient bien à une plage configurée ici, pour éviter les numéros inventés ou mal
+          tapés.
         </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
-            label="Année"
-            type="number"
-            value={annee}
-            onChange={(e) => setAnnee(e.target.value)}
-          />
-          <Input
-            label="Préfixe"
-            value={prefixe}
-            onChange={(e) => setPrefixe(e.target.value.toUpperCase())}
-          />
-          <Input
-            label="Prochain numéro"
+            label="Numéro de début"
             type="number"
             min="1"
-            value={prochainNumero}
-            onChange={(e) => setProchainNumero(e.target.value)}
+            value={numeroDebut}
+            onChange={(e) => setNumeroDebut(e.target.value)}
+          />
+          <Input
+            label="Numéro de fin"
+            type="number"
+            min="1"
+            value={numeroFin}
+            onChange={(e) => setNumeroFin(e.target.value)}
           />
         </div>
+        {creerMutation.isError && (
+          <p className="mt-3 text-sm text-red-600">
+            {(creerMutation.error as any)?.response?.data?.message ||
+              'Une erreur est survenue.'}
+          </p>
+        )}
         <div className="mt-4 flex justify-end">
           <Button
-            disabled={!annee || !prochainNumero}
-            isLoading={configurerMutation.isPending}
+            disabled={!numeroDebut || !numeroFin}
+            isLoading={creerMutation.isPending}
             onClick={() =>
-              configurerMutation.mutate({
-                annee: Number(annee),
-                prefixe: prefixe || undefined,
-                prochainNumero: Number(prochainNumero),
+              creerMutation.mutate({
+                numeroDebut: Number(numeroDebut),
+                numeroFin: Number(numeroFin),
               })
             }
           >
-            Enregistrer la configuration
+            <Plus className="h-4 w-4" />
+            Créer le carnet
           </Button>
         </div>
       </Card>
@@ -711,35 +713,47 @@ function CarnetsRecuTab() {
           <p className="p-6 text-sm text-slate-500">Chargement...</p>
         ) : !carnets || carnets.length === 0 ? (
           <p className="p-6 text-sm text-slate-500">
-            Aucun carnet configuré — le premier reçu émis créera automatiquement un carnet par
-            défaut ("REC", numéro 1) pour l'année en cours.
+            Aucun carnet configuré — un paiement ne pourra pas être enregistré tant qu'aucune plage
+            n'existe.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
                 <tr>
-                  <th className="px-5 py-3">Année</th>
-                  <th className="px-5 py-3">Préfixe</th>
-                  <th className="px-5 py-3 text-right">Prochain numéro</th>
-                  <th className="px-5 py-3">Dernière modification</th>
+                  <th className="px-5 py-3">Plage</th>
+                  <th className="px-5 py-3 text-right">Nombre de reçus</th>
+                  <th className="px-5 py-3">Statut</th>
+                  <th className="px-5 py-3">Créé le</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {carnets.map((carnet) => (
                   <tr key={carnet.id}>
-                    <td className="px-5 py-3 font-medium text-slate-900">{carnet.annee}</td>
-                    <td className="px-5 py-3 font-mono text-xs text-slate-600">{carnet.prefixe}</td>
-                    <td className="px-5 py-3 text-right tabular-nums">{carnet.prochainNumero}</td>
-                    <td className="px-5 py-3 text-slate-500">{formatDate(carnet.updatedAt)}</td>
+                    <td className="px-5 py-3 font-mono text-sm font-medium text-slate-900">
+                      {carnet.numeroDebut} — {carnet.numeroFin}
+                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums">
+                      {carnet.numeroFin - carnet.numeroDebut + 1}
+                    </td>
                     <td className="px-5 py-3">
-                      <button
-                        onClick={() => commencerEdition(carnet)}
-                        className="text-xs text-brand-700 underline"
-                      >
-                        Modifier
-                      </button>
+                      {carnet.actif ? (
+                        <Badge variant="success">Actif</Badge>
+                      ) : (
+                        <Badge variant="default">Fermé</Badge>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">{formatDate(carnet.createdAt)}</td>
+                    <td className="px-5 py-3">
+                      {carnet.actif && (
+                        <button
+                          onClick={() => fermerMutation.mutate(carnet.id)}
+                          className="text-xs text-red-600 underline"
+                        >
+                          Fermer
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

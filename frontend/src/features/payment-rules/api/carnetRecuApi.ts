@@ -2,16 +2,16 @@ import { apiClient } from '../../../shared/lib/apiClient';
 
 export interface CarnetRecu {
   id: string;
-  annee: number;
-  prefixe: string;
-  prochainNumero: number;
+  numeroDebut: number;
+  numeroFin: number;
+  actif: boolean;
+  createdAt: string;
   updatedAt: string;
 }
 
-export interface ConfigurerCarnetInput {
-  annee: number;
-  prefixe?: string;
-  prochainNumero: number;
+export interface CreateCarnetInput {
+  numeroDebut: number;
+  numeroFin: number;
 }
 
 export async function fetchCarnetsRecu(): Promise<CarnetRecu[]> {
@@ -19,7 +19,12 @@ export async function fetchCarnetsRecu(): Promise<CarnetRecu[]> {
   return data;
 }
 
-export async function configurerCarnetRecu(input: ConfigurerCarnetInput): Promise<CarnetRecu> {
+export async function createCarnetRecu(input: CreateCarnetInput): Promise<CarnetRecu> {
   const { data } = await apiClient.post<CarnetRecu>('/carnets-recu', input);
+  return data;
+}
+
+export async function fermerCarnetRecu(id: string): Promise<CarnetRecu> {
+  const { data } = await apiClient.patch<CarnetRecu>(`/carnets-recu/${id}/fermer`);
   return data;
 }

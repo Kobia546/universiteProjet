@@ -139,19 +139,30 @@ export function PaymentDetailPage() {
             valeur={`${paiement.inscription.filiere.libelle} — ${paiement.inscription.anneeUniversitaire?.libelle ?? ''}`}
           />
 
-          <div className="flex items-center gap-6 border-b border-dotted border-slate-300 pb-3 pt-1">
+          <div className="flex flex-wrap items-center gap-6 border-b border-dotted border-slate-300 pb-3 pt-1">
             <CaseACocher label="Espèces" coche={paiement.modePaiement === 'ESPECES'} />
-            <CaseACocher
-              label={paiement.modePaiement === 'CHEQUE' ? 'Chèque' : 'Autre mode'}
-              coche={paiement.modePaiement !== 'ESPECES'}
-            />
-            {paiement.modePaiement !== 'ESPECES' && (
-              <span className="text-xs text-slate-500">({paiement.modePaiement})</span>
-            )}
+            <CaseACocher label="Chèque" coche={paiement.modePaiement === 'CHEQUE'} />
             <span className="ml-auto text-xs text-slate-500">
               Date : {formatDate(paiement.datePaiement)}
             </span>
           </div>
+
+          {paiement.modePaiement === 'CHEQUE' && (paiement.numeroCheque || paiement.banque) && (
+            <div className="grid grid-cols-2 gap-3 border-b border-dotted border-slate-300 pb-3 text-xs text-slate-600">
+              {paiement.numeroCheque && (
+                <div>
+                  <span className="text-slate-400">N° de chèque : </span>
+                  <span className="font-mono">{paiement.numeroCheque}</span>
+                </div>
+              )}
+              {paiement.banque && (
+                <div>
+                  <span className="text-slate-400">Banque : </span>
+                  {paiement.banque}
+                </div>
+              )}
+            </div>
+          )}
 
           <ChampLigne
             label="Reste à payer"

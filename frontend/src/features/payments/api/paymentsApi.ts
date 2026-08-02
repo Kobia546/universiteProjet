@@ -1,6 +1,6 @@
 import { apiClient } from '../../../shared/lib/apiClient';
 
-export type ModePaiement = 'ESPECES' | 'CHEQUE' | 'VIREMENT' | 'MOBILE_MONEY';
+export type ModePaiement = 'ESPECES' | 'CHEQUE';
 
 export interface Paiement {
   id: string;
@@ -8,6 +8,8 @@ export interface Paiement {
   montant: number | string;
   motif: string;
   modePaiement: ModePaiement;
+  numeroCheque?: string | null;
+  banque?: string | null;
   datePaiement: string;
   statut: 'VALIDE' | 'ANNULE';
   estPaiementSoldant?: boolean;
@@ -37,6 +39,9 @@ export interface CreatePaiementInput {
   montant: number;
   motif?: string;
   modePaiement: ModePaiement;
+  numeroRecu: number;
+  numeroCheque?: string;
+  banque?: string;
 }
 
 export async function fetchPaiements(params?: {

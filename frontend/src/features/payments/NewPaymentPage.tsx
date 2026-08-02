@@ -14,8 +14,6 @@ import { formatMontant } from '../../shared/lib/format';
 const MODES_PAIEMENT: { value: ModePaiement; label: string }[] = [
   { value: 'ESPECES', label: 'Espèces' },
   { value: 'CHEQUE', label: 'Chèque' },
-  { value: 'VIREMENT', label: 'Virement' },
-  { value: 'MOBILE_MONEY', label: 'Mobile Money' },
 ];
 
 export function NewPaymentPage() {
@@ -34,6 +32,9 @@ export function NewPaymentPage() {
   const [montant, setMontant] = useState('');
   const [motif, setMotif] = useState('');
   const [modePaiement, setModePaiement] = useState<ModePaiement>('ESPECES');
+  const [numeroRecu, setNumeroRecu] = useState('');
+  const [numeroCheque, setNumeroCheque] = useState('');
+  const [banque, setBanque] = useState('');
 
   const { data: etudiants } = useQuery({
     queryKey: ['etudiants', recherche],
@@ -95,7 +96,12 @@ export function NewPaymentPage() {
     },
   });
 
-  const peutValider = inscriptionId && montant && Number(montant) > 0;
+  const peutValider =
+    inscriptionId &&
+    montant &&
+    Number(montant) > 0 &&
+    numeroRecu &&
+    (modePaiement !== 'CHEQUE' || numeroCheque);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -268,6 +274,32 @@ export function NewPaymentPage() {
           onChange={(e) => setMotif(e.target.value)}
         />
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Input
+              label="Numéro de reçu (carnet papier)"
+              type="number"
+              min="1"
+              value={numeroRecu}
+              onChange={(e) => setNumeroRecu(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Le numéro exact écrit sur le reçu physique remis à la personne.
+            </p>
+          </div>
+          {modePaiement === 'CHEQUE' && (
+            <>
+              <Input
+                label="Numéro de chèque"
+                value={numeroCheque}
+                onChange={(e) => setNumeroCheque(e.target.value)}
+                required
+              />
+              <Input label="Banque" value={banque} onChange={(e) => setBanque(e.target.value)} />
+            </>
+          )}
+        </div>
+
         {mutation.isError && (
           <p className="text-sm text-red-600">
             Une erreur est survenue lors de l'enregistrement du paiement.
@@ -288,6 +320,9 @@ export function NewPaymentPage() {
                 montant: Number(montant),
                 motif,
                 modePaiement,
+                numeroRecu: Number(numeroRecu),
+                numeroCheque: modePaiement === 'CHEQUE' ? numeroCheque : undefined,
+                banque: modePaiement === 'CHEQUE' ? banque || undefined : undefined,
               })
             }
           >

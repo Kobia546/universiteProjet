@@ -16,8 +16,6 @@ import type { ModePaiement } from '../payments/api/paymentsApi';
 const MODES_PAIEMENT: { value: ModePaiement; label: string }[] = [
   { value: 'ESPECES', label: 'Espèces' },
   { value: 'CHEQUE', label: 'Chèque' },
-  { value: 'VIREMENT', label: 'Virement' },
-  { value: 'MOBILE_MONEY', label: 'Mobile Money' },
 ];
 
 export function OnboardingPage() {
@@ -90,6 +88,9 @@ export function OnboardingPage() {
   const [montant, setMontant] = useState('');
   const [motif, setMotif] = useState("Frais d'inscription");
   const [modePaiement, setModePaiement] = useState<ModePaiement>('ESPECES');
+  const [numeroRecu, setNumeroRecu] = useState('');
+  const [numeroCheque, setNumeroCheque] = useState('');
+  const [banque, setBanque] = useState('');
 
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
@@ -124,7 +125,7 @@ export function OnboardingPage() {
   // Suggestion du montant d'inscription, calculée côté client à partir des
   // règles de paiement déjà configurées (même logique de spécificité que le
   // backend : filière+type > filière seule > type seul > générale).
-  const montantSuggere = useMemo(() => {
+  const regleApplicable = useMemo(() => {
     if (!regles || !filiereId) return null;
     const candidates = regles.filter(
       (r) =>
@@ -133,10 +134,19 @@ export function OnboardingPage() {
     );
     const score = (r: (typeof candidates)[number]) => (r.filiereId ? 2 : 0) + (r.type ? 1 : 0);
     candidates.sort((a, b) => score(b) - score(a));
-    const meilleure = candidates[0];
-    if (!meilleure) return null;
-    return Math.round((Number(meilleure.montantTotal) * meilleure.pourcentageInscription) / 100);
+    return candidates[0] ?? null;
   }, [regles, filiereId, typeEffectif]);
+
+  // Scolarité totale de la filière/type sélectionnés — affichée dès que
+  // les deux sont connus, indépendamment de la section paiement.
+  const scolariteTotale = regleApplicable ? Number(regleApplicable.montantTotal) : null;
+
+  const montantSuggere = useMemo(() => {
+    if (!regleApplicable) return null;
+    return Math.round(
+      (Number(regleApplicable.montantTotal) * regleApplicable.pourcentageInscription) / 100,
+    );
+  }, [regleApplicable]);
 
   const mutation = useMutation({
     mutationFn: async (input: Parameters<typeof createOnboarding>[0]) => {
@@ -161,7 +171,12 @@ export function OnboardingPage() {
     (mode === 'existant' ? !!etudiantId : !!(nom && prenom)) &&
     filiereId &&
     anneeUniversitaireId &&
-    (!enregistrerPaiement || (montant && Number(montant) > 0 && motif));
+    (!enregistrerPaiement ||
+      (montant &&
+        Number(montant) > 0 &&
+        motif &&
+        numeroRecu &&
+        (modePaiement !== 'CHEQUE' || numeroCheque)));
 
   function handleSubmit() {
     mutation.mutate({
@@ -182,7 +197,14 @@ export function OnboardingPage() {
       anneeUniversitaireId,
       dateInscription,
       paiementInitial: enregistrerPaiement
-        ? { montant: Number(montant), motif, modePaiement }
+        ? {
+            montant: Number(montant),
+            motif,
+            modePaiement,
+            numeroRecu: Number(numeroRecu),
+            numeroCheque: modePaiement === 'CHEQUE' ? numeroCheque : undefined,
+            banque: modePaiement === 'CHEQUE' ? banque || undefined : undefined,
+          }
         : undefined,
     });
   }
@@ -429,6 +451,27 @@ export function OnboardingPage() {
               </select>
             </div>
           </div>
+
+          {filiereId && (
+            <div className="mt-4">
+              {scolariteTotale !== null ? (
+                <div className="flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
+                  <span className="text-sm font-medium text-brand-800">
+                    Scolarité {typeEffectif === 'TRAVAILLEUR' ? '(travailleur)' : '(étudiant)'}
+                  </span>
+                  <span className="font-serif text-lg font-semibold text-brand-900">
+                    {formatMontant(scolariteTotale)}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-600">
+                  Aucune règle de paiement configurée pour cette filière/type/année — configure-la
+                  d'abord dans Paramètres → Règles de paiement.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="mt-4 max-w-xs">
             <Input
               label="Date d'inscription (celle du carnet)"
@@ -492,6 +535,35 @@ export function OnboardingPage() {
                 </div>
               </div>
               <Input label="Motif" value={motif} onChange={(e) => setMotif(e.target.value)} />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <Input
+                    label="Numéro de reçu (carnet papier)"
+                    type="number"
+                    min="1"
+                    value={numeroRecu}
+                    onChange={(e) => setNumeroRecu(e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Le numéro exact écrit sur le reçu physique remis à la personne.
+                  </p>
+                </div>
+                {modePaiement === 'CHEQUE' && (
+                  <>
+                    <Input
+                      label="Numéro de chèque"
+                      value={numeroCheque}
+                      onChange={(e) => setNumeroCheque(e.target.value)}
+                      required
+                    />
+                    <Input
+                      label="Banque"
+                      value={banque}
+                      onChange={(e) => setBanque(e.target.value)}
+                    />
+                  </>
+                )}
+              </div>
             </div>
           )}
         </Card>

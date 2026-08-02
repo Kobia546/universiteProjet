@@ -20,6 +20,9 @@ export interface CreateOnboardingInput {
     montant: number;
     motif: string;
     modePaiement: ModePaiement;
+    numeroRecu: number;
+    numeroCheque?: string;
+    banque?: string;
   };
 }
 
