@@ -2,11 +2,22 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { AccountingService } from './accounting.service';
 import { CreateDepenseDto } from './dto/create-depense.dto';
 import { CreateRecetteManuelleDto } from './dto/create-recette-manuelle.dto';
+import { CreateOperationCaisseDto } from './dto/create-operation-caisse.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller()
 export class AccountingController {
   constructor(private readonly accountingService: AccountingService) {}
+
+  // ---- Opération de caisse (Bon de caisse : Entrée/Sortie) ----
+
+  @Post('operations-caisse')
+  creerOperationCaisse(
+    @Body() dto: CreateOperationCaisseDto,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.accountingService.creerOperationCaisse(dto, user.userId);
+  }
 
   // ---- EP703 ----
 

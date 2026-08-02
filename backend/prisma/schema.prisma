@@ -334,6 +334,8 @@ model EcritureRecette {
   numeroBordereau       String         @unique
   date                  DateTime       @default(now())
   libelle               String
+  // Qui a demandé/remis l'opération — champ du "Bon de caisse" papier.
+  requerant             String?
   compteDebit           String         @default("565")
   compteCredit          String         @default("445")
   montant               Decimal        @db.Decimal(12, 2)
@@ -355,6 +357,8 @@ model EcritureDepense {
   numeroCheque    String         @unique
   date            DateTime       @default(now())
   libelle         String
+  // Qui a demandé/remis l'opération — champ du "Bon de caisse" papier.
+  requerant       String?
   compteDebit     String         @default("445")
   compteCredit    String         @default("565")
   montant         Decimal        @db.Decimal(12, 2)

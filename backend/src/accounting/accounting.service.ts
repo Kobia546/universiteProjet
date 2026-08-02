@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NumerotationComptableService } from './numerotation-comptable.service';
 import { CreateDepenseDto } from './dto/create-depense.dto';
 import { CreateRecetteManuelleDto } from './dto/create-recette-manuelle.dto';
+import { CreateOperationCaisseDto, TypeOperationCaisse } from './dto/create-operation-caisse.dto';
 import type { Paiement } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 
@@ -40,7 +41,9 @@ export class AccountingService {
       data: {
         numeroBordereau,
         libelle: dto.libelle,
+        requerant: dto.requerant,
         montant: dto.montant,
+        date: dto.date ? new Date(dto.date) : undefined,
         pieceJustificativeUrl: dto.pieceJustificativeUrl,
         agentId,
       },
@@ -101,7 +104,9 @@ export class AccountingService {
       data: {
         numeroCheque,
         libelle: dto.libelle,
+        requerant: dto.requerant,
         montant: dto.montant,
+        date: dto.date ? new Date(dto.date) : undefined,
         justificatifUrl: dto.justificatifUrl,
         agentId,
       },
@@ -152,6 +157,39 @@ export class AccountingService {
       details: { montant: Number(depense.montant) },
     });
     return misAJour;
+  }
+
+  // ---- Opération de caisse (Bon de caisse papier : entrée ou sortie) ----
+
+  /**
+   * Point d'entrée unique pour le formulaire "Opération de caisse", qui
+   * reproduit le bon de caisse papier (Entrée/Sortie + Requérant + Objet +
+   * Montant + Date). Une "Entrée" devient une recette (EP703), une
+   * "Sortie" devient une dépense (EP704) — même logique de numérotation et
+   * de traçabilité que les saisies déjà existantes.
+   */
+  async creerOperationCaisse(dto: CreateOperationCaisseDto, agentId: string) {
+    if (dto.type === TypeOperationCaisse.ENTREE) {
+      return this.creerRecetteManuelle(
+        {
+          libelle: dto.objet,
+          requerant: dto.requerant,
+          montant: dto.montant,
+          date: dto.date,
+        },
+        agentId,
+      );
+    }
+
+    return this.createDepense(
+      {
+        libelle: dto.objet,
+        requerant: dto.requerant,
+        montant: dto.montant,
+        date: dto.date,
+      },
+      agentId,
+    );
   }
 
   // ---- EP706 : Centralisateur (vue agrégée, pas de saisie manuelle) ----
