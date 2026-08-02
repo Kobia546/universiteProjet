@@ -116,7 +116,7 @@ export function PaymentDetailPage() {
         </div>
 
         <p className="mb-1 text-xs font-medium text-slate-900">
-           {numeroRecuApp}
+          Reçu N° {numeroRecuApp}
         </p>
 
         <div className="mb-2 flex items-center justify-between">

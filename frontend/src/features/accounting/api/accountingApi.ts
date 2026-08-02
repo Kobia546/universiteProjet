@@ -5,6 +5,7 @@ export interface EcritureRecette {
   numeroBordereau: string;
   date: string;
   libelle: string;
+  requerant?: string | null;
   compteDebit: string;
   compteCredit: string;
   montant: number | string;
@@ -18,11 +19,29 @@ export interface EcritureDepense {
   numeroCheque: string;
   date: string;
   libelle: string;
+  requerant?: string | null;
   compteDebit: string;
   compteCredit: string;
   montant: number | string;
   statut: 'VALIDE' | 'CONTRE_PASSE';
   agent: { nom: string; prenom: string };
+}
+
+export type TypeOperationCaisse = 'ENTREE' | 'SORTIE';
+
+export interface CreateOperationCaisseInput {
+  type: TypeOperationCaisse;
+  requerant?: string;
+  objet: string;
+  montant: number;
+  date?: string;
+}
+
+export async function creerOperationCaisse(
+  input: CreateOperationCaisseInput,
+): Promise<EcritureRecette | EcritureDepense> {
+  const { data } = await apiClient.post('/operations-caisse', input);
+  return data;
 }
 
 export interface Centralisateur {

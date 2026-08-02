@@ -13,14 +13,17 @@ import {
   creerDepense,
   contrePasserRecette,
   contrePasserDepense,
+  creerOperationCaisse,
+  type TypeOperationCaisse,
 } from './api/accountingApi';
 import { formatDate, formatMontant, formatMontantPdf } from '../../shared/lib/format';
+import { montantEnLettres } from '../../shared/lib/montantEnLettres';
 import { exporterPdf } from '../../shared/lib/exporterPdf';
 
-type Onglet = 'recettes' | 'depenses' | 'centralisateur';
+type Onglet = 'operation-caisse' | 'recettes' | 'depenses' | 'centralisateur';
 
 export function AccountingPage() {
-  const [onglet, setOnglet] = useState<Onglet>('centralisateur');
+  const [onglet, setOnglet] = useState<Onglet>('operation-caisse');
 
   return (
     <div>
@@ -32,6 +35,7 @@ export function AccountingPage() {
       <div className="mb-6 flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
         {(
           [
+            { key: 'operation-caisse', label: 'Opération de caisse' },
             { key: 'centralisateur', label: 'EP706 — Centralisateur' },
             { key: 'recettes', label: 'EP703 — Recettes' },
             { key: 'depenses', label: 'EP704 — Dépenses' },
@@ -51,10 +55,133 @@ export function AccountingPage() {
         ))}
       </div>
 
+      {onglet === 'operation-caisse' && <OperationCaisseTab />}
       {onglet === 'centralisateur' && <CentralisateurTab />}
       {onglet === 'recettes' && <RecettesTab />}
       {onglet === 'depenses' && <DepensesTab />}
     </div>
+  );
+}
+
+function OperationCaisseTab() {
+  const [type, setType] = useState<TypeOperationCaisse>('ENTREE');
+  const [requerant, setRequerant] = useState('');
+  const [objet, setObjet] = useState('');
+  const [montant, setMontant] = useState('');
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: creerOperationCaisse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ep703'] });
+      queryClient.invalidateQueries({ queryKey: ['ep704'] });
+      queryClient.invalidateQueries({ queryKey: ['ep706'] });
+      setRequerant('');
+      setObjet('');
+      setMontant('');
+      setDate(new Date().toISOString().slice(0, 10));
+    },
+  });
+
+  const peutValider = objet && montant && Number(montant) > 0;
+
+  return (
+    <Card className="mx-auto max-w-xl">
+      <h2 className="mb-1 text-center font-serif text-lg font-bold uppercase tracking-wide text-slate-900">
+        Bon de caisse
+      </h2>
+      <p className="mb-5 text-center text-xs text-slate-500">
+        Toute opération enregistrée ici crée automatiquement une écriture EP703 (Entrée) ou EP704
+        (Sortie) — visible dans les onglets correspondants.
+      </p>
+
+      {/* Entrée / Sortie, façon cases à cocher du bon papier */}
+      <div className="mb-5 flex justify-center gap-6">
+        {(
+          [
+            { value: 'ENTREE' as const, label: 'Entrée de caisse' },
+            { value: 'SORTIE' as const, label: 'Sortie de caisse' },
+          ]
+        ).map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setType(option.value)}
+            className="flex items-center gap-2 text-sm text-slate-700"
+          >
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
+                type === option.value
+                  ? 'border-brand-600 bg-brand-600 text-white'
+                  : 'border-slate-300'
+              }`}
+            >
+              {type === option.value && '✓'}
+            </span>
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        <Input
+          label="Requérant"
+          placeholder="Nom de la personne à l'origine de l'opération"
+          value={requerant}
+          onChange={(e) => setRequerant(e.target.value)}
+        />
+        <Input
+          label="Objet"
+          placeholder="Motif de l'opération"
+          value={objet}
+          onChange={(e) => setObjet(e.target.value)}
+        />
+        <Input
+          label="Montant (F CFA)"
+          type="number"
+          min="0"
+          value={montant}
+          onChange={(e) => setMontant(e.target.value)}
+        />
+        {montant && Number(montant) > 0 && (
+          <p className="text-xs italic text-slate-500">
+            {montantEnLettres(Number(montant))}
+          </p>
+        )}
+        <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      </div>
+
+      {mutation.isError && (
+        <p className="mt-3 text-sm text-red-600">
+          Une erreur est survenue lors de l'enregistrement.
+        </p>
+      )}
+      {mutation.isSuccess && (
+        <p className="mt-3 text-sm text-emerald-600">
+          Opération enregistrée — écriture{' '}
+          {type === 'ENTREE' ? 'EP703 (recette)' : 'EP704 (dépense)'} créée.
+        </p>
+      )}
+
+      <div className="mt-5 flex justify-center">
+        <Button
+          disabled={!peutValider}
+          isLoading={mutation.isPending}
+          onClick={() =>
+            mutation.mutate({
+              type,
+              requerant: requerant || undefined,
+              objet,
+              montant: Number(montant),
+              date,
+            })
+          }
+        >
+          Enregistrer l'opération
+        </Button>
+      </div>
+    </Card>
   );
 }
 
