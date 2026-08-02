@@ -39,15 +39,22 @@ export function PaymentDetailPage() {
   const prochaineEcheance = echeances.find((e) => e.statut !== 'SOLDE');
 
   // Numéro auto-généré par l'app (séquentiel), formaté REC-année-000045 —
-  // distinct du numéro de carnet saisi manuellement (paiement.recu.numeroRecu).
+  // affiché en petit/noir en haut du reçu, à titre de référence interne.
   const numeroRecuApp = paiement.recu
     ? `REC-${new Date(paiement.recu.dateEmission).getFullYear()}-${String(paiement.recu.numeroSequence).padStart(6, '0')}`
+    : '—';
+
+  // Numéro de carnet (reçu physique) — c'est LUI qui fait office de numéro
+  // de reçu officiel, affiché en grand. Complété avec des zéros pour un
+  // rendu uniforme (ex: "92" → "000092").
+  const numeroCarnetAffiche = paiement.recu?.numeroRecu
+    ? paiement.recu.numeroRecu.padStart(6, '0')
     : '—';
 
   return (
     <div>
       <PageHeader
-        title={`Reçu N° ${numeroRecuApp}`}
+        title={`Reçu N° ${numeroCarnetAffiche}`}
         description={`${paiement.etudiant.prenom} ${paiement.etudiant.nom} — ${formatDateHeure(paiement.datePaiement)}`}
         action={
           <div className="flex flex-wrap gap-2 print:hidden">
@@ -108,24 +115,21 @@ export function PaymentDetailPage() {
           />
         </div>
 
+        <p className="mb-1 text-xs font-medium text-slate-900">
+           {numeroRecuApp}
+        </p>
+
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-900">
             Reçu{' '}
             <span className="font-mono text-red-600">
-              N° {numeroRecuApp}
+              N° {numeroCarnetAffiche}
             </span>
           </h2>
           <Badge variant={paiement.statut === 'VALIDE' ? 'success' : 'danger'}>
             {paiement.statut}
           </Badge>
         </div>
-
-        {paiement.recu?.numeroRecu && (
-          <p className="mb-2 text-xs text-slate-500">
-            N° de carnet (reçu physique) :{' '}
-            <span className="font-mono font-medium text-slate-700">{paiement.recu.numeroRecu}</span>
-          </p>
-        )}
 
         <div className="mb-6 flex justify-end border-b border-dotted border-slate-300 pb-2 text-xs text-slate-400">
           B.P.F. : ..........................................

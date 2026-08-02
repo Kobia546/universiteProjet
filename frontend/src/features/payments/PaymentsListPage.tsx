@@ -80,7 +80,7 @@ export function PaymentsListPage() {
                   className="cursor-pointer hover:bg-slate-50"
                 >
                   <td className="px-5 py-3 font-mono text-xs text-slate-600">
-                    {paiement.recu?.numeroRecu ?? '—'}
+                    {paiement.recu?.numeroRecu ? paiement.recu.numeroRecu.padStart(6, '0') : '—'}
                   </td>
                   <td className="px-5 py-3 font-medium text-slate-900">
                     {paiement.etudiant.prenom} {paiement.etudiant.nom}

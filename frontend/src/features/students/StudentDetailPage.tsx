@@ -133,10 +133,12 @@ export function StudentDetailPage() {
           {!etudiant.paiements || etudiant.paiements.length === 0 ? (
             <p className="text-sm text-slate-500">Aucun paiement enregistré.</p>
           ) : (
-            <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-sm">
+            <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm">
               <thead className="border-b border-slate-100 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="py-2">Date</th>
+                  <th className="py-2">Année</th>
+                  <th className="py-2">Filière</th>
                   <th className="py-2">Motif</th>
                   <th className="py-2">Mode</th>
                   <th className="py-2 text-right">Montant</th>
@@ -146,8 +148,29 @@ export function StudentDetailPage() {
                 {etudiant.paiements.map((paiement) => (
                   <tr key={paiement.id}>
                     <td className="py-2">{formatDate(paiement.datePaiement)}</td>
+                    <td className="py-2 text-slate-500">
+                      {paiement.inscription?.anneeUniversitaire?.libelle ?? '—'}
+                    </td>
+                    <td className="py-2 text-slate-500">
+                      {paiement.inscription?.filiere?.libelle ?? '—'}
+                    </td>
                     <td className="py-2">{paiement.motif}</td>
-                    <td className="py-2">{paiement.modePaiement}</td>
+                    <td className="py-2">
+                      {paiement.modePaiement === 'CHEQUE' ? (
+                        <div>
+                          <span>Chèque</span>
+                          {(paiement.numeroCheque || paiement.banque) && (
+                            <p className="text-xs text-slate-400">
+                              {paiement.numeroCheque && `N° ${paiement.numeroCheque}`}
+                              {paiement.numeroCheque && paiement.banque && ' · '}
+                              {paiement.banque}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        'Espèces'
+                      )}
+                    </td>
                     <td className="py-2 text-right font-medium">{formatMontant(paiement.montant)}</td>
                   </tr>
                 ))}

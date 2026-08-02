@@ -39,8 +39,14 @@ export interface Etudiant {
     datePaiement: string;
     motif: string;
     modePaiement: string;
+    numeroCheque?: string | null;
+    banque?: string | null;
     montant: number | string;
     statut?: 'VALIDE' | 'ANNULE';
+    inscription?: {
+      filiere?: { code: string; libelle: string };
+      anneeUniversitaire?: { libelle: string };
+    };
   }>;
 }
 
