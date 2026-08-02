@@ -251,8 +251,6 @@ model Echeance {
 enum ModePaiement {
   ESPECES
   CHEQUE
-  VIREMENT
-  MOBILE_MONEY
 }
 
 enum StatutPaiement {
@@ -270,6 +268,9 @@ model Paiement {
   montant         Decimal        @db.Decimal(12, 2)
   motif           String
   modePaiement    ModePaiement
+  // Renseignés uniquement si modePaiement = CHEQUE
+  numeroCheque    String?
+  banque          String?
   datePaiement    DateTime       @default(now())
   statut          StatutPaiement @default(VALIDE)
 
@@ -285,25 +286,32 @@ model Paiement {
 }
 
 model Recu {
-  id           String   @id @default(uuid())
-  numeroRecu   String   @unique
-  paiementId   String   @unique
-  paiement     Paiement @relation(fields: [paiementId], references: [id])
+  id           String      @id @default(uuid())
+  numeroRecu   String      @unique
+  paiementId   String      @unique
+  paiement     Paiement    @relation(fields: [paiementId], references: [id])
+  carnetRecuId String?
+  carnetRecu   CarnetRecu? @relation(fields: [carnetRecuId], references: [id])
   pdfUrl       String?
-  dateEmission DateTime @default(now())
+  dateEmission DateTime    @default(now())
 
   @@map("recus")
 }
 
-// Configuration du carnet de reçus physique en cours d'utilisation — permet
-// au comptable de faire correspondre la numérotation de l'app avec le
-// carnet papier réellement utilisé (préfixe + numéro de départ/courant).
+// Configuration des carnets de reçus physiques par plage de numéros (ex :
+// 90 à 95) — le comptable remplit d'abord le carnet papier, puis saisit le
+// numéro exact du reçu physique au moment du paiement dans l'app. Cette
+// plage sert à vérifier que le numéro saisi appartient bien à un carnet
+// réellement distribué (évite les fautes de frappe / numéros inventés).
 model CarnetRecu {
-  id              String   @id @default(uuid())
-  annee           Int      @unique
-  prefixe         String   @default("REC")
-  prochainNumero  Int      @default(1)
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(uuid())
+  numeroDebut Int
+  numeroFin   Int
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recus Recu[]
 
   @@map("carnets_recu")
 }

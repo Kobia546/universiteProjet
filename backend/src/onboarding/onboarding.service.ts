@@ -72,6 +72,9 @@ export class OnboardingService {
           montant: dto.paiementInitial.montant,
           motif: dto.paiementInitial.motif,
           modePaiement: dto.paiementInitial.modePaiement,
+          numeroRecu: dto.paiementInitial.numeroRecu,
+          numeroCheque: dto.paiementInitial.numeroCheque,
+          banque: dto.paiementInitial.banque,
         },
         agentId,
       );

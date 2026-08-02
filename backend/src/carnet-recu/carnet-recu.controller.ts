@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CarnetRecuService } from './carnet-recu.service';
-import { ConfigurerCarnetDto } from './dto/configurer-carnet.dto';
+import { CreateCarnetDto } from './dto/create-carnet.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('carnets-recu')
@@ -13,7 +13,12 @@ export class CarnetRecuController {
   }
 
   @Post()
-  configurer(@Body() dto: ConfigurerCarnetDto, @CurrentUser() user: { userId: string }) {
-    return this.carnetRecuService.configurer(dto, user.userId);
+  create(@Body() dto: CreateCarnetDto, @CurrentUser() user: { userId: string }) {
+    return this.carnetRecuService.create(dto, user.userId);
+  }
+
+  @Patch(':id/fermer')
+  fermer(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.carnetRecuService.fermer(id, user.userId);
   }
 }

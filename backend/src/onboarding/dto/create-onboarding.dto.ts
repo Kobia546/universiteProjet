@@ -3,6 +3,7 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -22,6 +23,18 @@ class PaiementInitialDto {
 
   @IsEnum(ModePaiement, { message: 'Mode de paiement invalide' })
   modePaiement: ModePaiement;
+
+  @IsInt()
+  @Min(1)
+  numeroRecu: number;
+
+  @IsOptional()
+  @IsString()
+  numeroCheque?: string;
+
+  @IsOptional()
+  @IsString()
+  banque?: string;
 }
 
 export class CreateOnboardingDto {

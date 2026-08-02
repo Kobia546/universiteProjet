@@ -74,8 +74,8 @@ async function main() {
   for (const m of matieresData) {
     const matiere = await prisma.matiere.upsert({
       where: { code: m.code },
-      update: {},
-      create: m,
+      update: { actif: true },
+      create: { ...m, actif: true },
     });
     for (const filiere of filieres) {
       await prisma.filiereMatiere.upsert({
@@ -86,35 +86,50 @@ async function main() {
     }
   }
 
-  // ---- Règle de paiement générale par défaut (étudiants classiques) ----
-  await prisma.reglePaiement.upsert({
-    where: { id: 'seed-regle-etudiant-2025-2026' },
-    update: {},
-    create: {
-      id: 'seed-regle-etudiant-2025-2026',
-      filiereId: null,
-      type: 'ETUDIANT',
-      anneeUniversitaireId: annee.id,
-      montantTotal: 500000,
-      pourcentageInscription: 60,
-      nombreEcheances: 3,
-    },
-  });
+  // ---- Scolarité par filière et par type (étudiant/travailleur) ----
+  // Ces montants sont propres à l'année 2025-2026 — chaque nouvelle année
+  // universitaire aura ses propres règles, modifiables indépendamment
+  // (historique conservé, rien n'écrase les années précédentes).
+  const scolariteParFiliere: Record<string, { etudiant: number; travailleur: number }> = {
+    L1: { etudiant: 100000, travailleur: 150000 },
+    L2: { etudiant: 175000, travailleur: 200000 },
+    L3: { etudiant: 320000, travailleur: 380000 },
+    M1: { etudiant: 700000, travailleur: 1050000 },
+    M2: { etudiant: 900000, travailleur: 1500000 },
+  };
 
-  // ---- Règle de paiement pour les travailleurs (souvent plus élevée) ----
-  await prisma.reglePaiement.upsert({
-    where: { id: 'seed-regle-travailleur-2025-2026' },
-    update: {},
-    create: {
-      id: 'seed-regle-travailleur-2025-2026',
-      filiereId: null,
-      type: 'TRAVAILLEUR',
-      anneeUniversitaireId: annee.id,
-      montantTotal: 750000,
-      pourcentageInscription: 60,
-      nombreEcheances: 3,
-    },
-  });
+  for (const filiere of filieres) {
+    const montants = scolariteParFiliere[filiere.code];
+    if (!montants) continue;
+
+    await prisma.reglePaiement.upsert({
+      where: { id: `seed-regle-${filiere.code}-etudiant-2025-2026` },
+      update: { montantTotal: montants.etudiant },
+      create: {
+        id: `seed-regle-${filiere.code}-etudiant-2025-2026`,
+        filiereId: filiere.id,
+        type: 'ETUDIANT',
+        anneeUniversitaireId: annee.id,
+        montantTotal: montants.etudiant,
+        pourcentageInscription: 60,
+        nombreEcheances: 3,
+      },
+    });
+
+    await prisma.reglePaiement.upsert({
+      where: { id: `seed-regle-${filiere.code}-travailleur-2025-2026` },
+      update: { montantTotal: montants.travailleur },
+      create: {
+        id: `seed-regle-${filiere.code}-travailleur-2025-2026`,
+        filiereId: filiere.id,
+        type: 'TRAVAILLEUR',
+        anneeUniversitaireId: annee.id,
+        montantTotal: montants.travailleur,
+        pourcentageInscription: 60,
+        nombreEcheances: 3,
+      },
+    });
+  }
 
   // ---- Comptes utilisateurs : comptable + adjoint (même rôle) ----
   const motDePasseParDefaut = 'ChangezMoi123!';

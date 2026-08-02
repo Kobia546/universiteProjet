@@ -5,5 +5,6 @@ import { CarnetRecuController } from './carnet-recu.controller';
 @Module({
   controllers: [CarnetRecuController],
   providers: [CarnetRecuService],
+  exports: [CarnetRecuService],
 })
 export class CarnetRecuModule {}

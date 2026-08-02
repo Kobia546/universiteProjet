@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
-import { NumeroRecuService } from './numero-recu.service';
+import { CarnetRecuService } from '../carnet-recu/carnet-recu.service';
 import { CreatePaiementDto } from './dto/create-paiement.dto';
 import { AuditService } from '../audit/audit.service';
 import { EcheancesService } from '../enrollments/echeances.service';
@@ -12,7 +12,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly accountingService: AccountingService,
-    private readonly numeroRecuService: NumeroRecuService,
+    private readonly carnetRecuService: CarnetRecuService,
     private readonly auditService: AuditService,
     private readonly echeancesService: EcheancesService,
   ) {}
@@ -27,6 +27,10 @@ export class PaymentsService {
       throw new BadRequestException("Impossible d'enregistrer un paiement sur une inscription annulée");
     }
 
+    // 0. Vérifier que le numéro de reçu (carnet papier) appartient bien à
+    // une plage configurée et n'a pas déjà été utilisé.
+    const carnet = await this.carnetRecuService.validerNumero(dto.numeroRecu);
+
     // 1. Créer le paiement
     const paiement = await this.prisma.paiement.create({
       data: {
@@ -36,14 +40,20 @@ export class PaymentsService {
         montant: dto.montant,
         motif: dto.motif ?? '',
         modePaiement: dto.modePaiement,
+        numeroCheque: dto.modePaiement === 'CHEQUE' ? dto.numeroCheque : undefined,
+        banque: dto.modePaiement === 'CHEQUE' ? dto.banque : undefined,
         agentId,
       },
     });
 
-    // 2. Générer le reçu (obligatoire pour tout paiement)
-    const numeroRecu = await this.numeroRecuService.genererNumero();
+    // 2. Générer le reçu (obligatoire pour tout paiement) avec le numéro
+    // physique fourni par le comptable, rattaché au carnet validé.
     await this.prisma.recu.create({
-      data: { numeroRecu, paiementId: paiement.id },
+      data: {
+        numeroRecu: String(dto.numeroRecu),
+        paiementId: paiement.id,
+        carnetRecuId: carnet.id,
+      },
     });
 
     // 3. Générer l'écriture comptable EP703 correspondante
@@ -58,7 +68,7 @@ export class PaymentsService {
       action: 'create',
       ressourceType: 'paiement',
       ressourceId: paiement.id,
-      details: { montant: dto.montant, motif: dto.motif, inscriptionId: dto.inscriptionId },
+      details: { montant: dto.montant, motif: dto.motif, inscriptionId: dto.inscriptionId, numeroRecu: dto.numeroRecu },
     });
 
     return this.findOne(paiement.id);
