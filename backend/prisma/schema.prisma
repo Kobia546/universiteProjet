@@ -287,6 +287,11 @@ model Paiement {
 
 model Recu {
   id           String      @id @default(uuid())
+  // Numéro auto-généré par l'app, purement séquentiel et toujours unique —
+  // affiché en premier sur le reçu, indépendant du carnet papier.
+  numeroSequence Int       @unique @default(autoincrement())
+  // Le numéro du reçu physique tel que saisi par le comptable (celui du
+  // carnet papier) — affiché en dessous du numéro app sur le reçu imprimé.
   numeroRecu   String      @unique
   paiementId   String      @unique
   paiement     Paiement    @relation(fields: [paiementId], references: [id])

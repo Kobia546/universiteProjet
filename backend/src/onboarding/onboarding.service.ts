@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { StudentsService } from '../students/students.service';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { PaymentsService } from '../payments/payments.service';
+import { CarnetRecuService } from '../carnet-recu/carnet-recu.service';
 import { CreateOnboardingDto } from './dto/create-onboarding.dto';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class OnboardingService {
     private readonly studentsService: StudentsService,
     private readonly enrollmentsService: EnrollmentsService,
     private readonly paymentsService: PaymentsService,
+    private readonly carnetRecuService: CarnetRecuService,
   ) {}
 
   /**
@@ -22,13 +24,21 @@ export class OnboardingService {
    * - `etudiantId` absent → on crée d'abord la fiche à partir des champs
    *   fournis (nom, prénom, etc.).
    *
-   * NB : ce n'est pas une transaction SQL unique (chaque étape utilise son
-   * propre service métier avec sa propre logique). Si le paiement échoue
-   * après la création de l'inscription, celle-ci reste enregistrée —
-   * l'agent peut alors enregistrer le paiement séparément depuis la fiche
-   * de l'inscription.
+   * IMPORTANT : si un paiement initial est fourni, son numéro de reçu est
+   * validé EN PREMIER, avant toute création d'étudiant ou d'inscription.
+   * Ça évite qu'une inscription soit enregistrée alors que le paiement
+   * échoue juste après à cause d'un numéro de reçu invalide.
+   *
+   * NB : ce n'est toujours pas une transaction SQL unique de bout en bout
+   * (chaque étape utilise son propre service métier). Si un échec survient
+   * après la validation du numéro (cas rare), l'agent peut compléter le
+   * paiement séparément depuis la fiche de l'inscription créée.
    */
   async create(dto: CreateOnboardingDto, agentId: string) {
+    if (dto.paiementInitial) {
+      await this.carnetRecuService.validerNumero(dto.paiementInitial.numeroRecu);
+    }
+
     let etudiant;
 
     if (dto.etudiantId) {
