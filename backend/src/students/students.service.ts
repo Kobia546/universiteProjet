@@ -90,38 +90,40 @@ export class StudentsService {
     });
   }
 
-  async findOne(id: string) {
-    const etudiant = await this.prisma.etudiant.findUnique({
-      where: { id },
-      include: {
-        inscriptions: {
-          include: {
-            filiere: true,
-            anneeUniversitaire: true,
-            paiements: { where: { statut: 'VALIDE' } },
-          },
-          orderBy: { createdAt: 'desc' },
+ async findOne(id: string) {
+  const etudiant = await this.prisma.etudiant.findUnique({
+    where: { id },
+    include: {
+      inscriptions: {
+        include: {
+          filiere: true,
+          anneeUniversitaire: true,
+          paiements: { where: { statut: 'VALIDE' } },
         },
-        paiements: {
-          orderBy: { datePaiement: 'desc' },
+        orderBy: { createdAt: 'desc' },
+      },
+      paiements: {
+        orderBy: { datePaiement: 'desc' },
+        include: {
+          inscription: { include: { filiere: true, anneeUniversitaire: true } },
         },
       },
-    });
+    },
+  });
 
-    if (!etudiant) {
-      throw new NotFoundException(`Étudiant ${id} introuvable`);
-    }
-
-    // Calcule le reste à payer pour chaque inscription individuellement.
-    const inscriptionsAvecSolde = etudiant.inscriptions.map((i) => {
-      const totalPaye = i.paiements.reduce((s, p) => s + Number(p.montant), 0);
-      const resteAPayer = Number(i.montantTotalDu) - totalPaye;
-      return { ...i, totalPaye, resteAPayer: Math.max(resteAPayer, 0) };
-    });
-
-    return { ...etudiant, inscriptions: inscriptionsAvecSolde };
+  if (!etudiant) {
+    throw new NotFoundException(`Étudiant ${id} introuvable`);
   }
 
+  // Calcule le reste à payer pour chaque inscription individuellement.
+  const inscriptionsAvecSolde = etudiant.inscriptions.map((i) => {
+    const totalPaye = i.paiements.reduce((s, p) => s + Number(p.montant), 0);
+    const resteAPayer = Number(i.montantTotalDu) - totalPaye;
+    return { ...i, totalPaye, resteAPayer: Math.max(resteAPayer, 0) };
+  });
+
+  return { ...etudiant, inscriptions: inscriptionsAvecSolde };
+}
   async update(id: string, dto: UpdateEtudiantDto) {
     await this.findOne(id);
     return this.prisma.etudiant.update({
