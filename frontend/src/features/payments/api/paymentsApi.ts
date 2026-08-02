@@ -31,7 +31,7 @@ export interface Paiement {
     paiements?: Array<{ id: string; montant: number | string; statut: 'VALIDE' | 'ANNULE' }>;
   };
   agent: { nom: string; prenom: string };
-  recu?: { numeroRecu: string; dateEmission: string };
+  recu?: { numeroRecu: string; numeroSequence: number; dateEmission: string };
 }
 
 export interface CreatePaiementInput {

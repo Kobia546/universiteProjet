@@ -62,7 +62,7 @@ export function PaymentsListPage() {
           <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
               <tr>
-                <th className="px-5 py-3">Reçu</th>
+                <th className="px-5 py-3">N° carnet</th>
                 <th className="px-5 py-3">Étudiant</th>
                 <th className="px-5 py-3">Motif</th>
                 <th className="px-5 py-3">Mode</th>

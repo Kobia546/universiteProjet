@@ -12,6 +12,7 @@ import { createOnboarding } from './api/onboardingApi';
 import { formatMontant } from '../../shared/lib/format';
 import type { Sexe, TypeEtudiant } from '../students/types';
 import type { ModePaiement } from '../payments/api/paymentsApi';
+import { BANQUES_COTE_DIVOIRE } from '../../shared/data/banques';
 
 const MODES_PAIEMENT: { value: ModePaiement; label: string }[] = [
   { value: 'ESPECES', label: 'Espèces' },
@@ -548,22 +549,32 @@ export function OnboardingPage() {
                     Le numéro exact écrit sur le reçu physique remis à la personne.
                   </p>
                 </div>
-                {modePaiement === 'CHEQUE' && (
-                  <>
-                    <Input
-                      label="Numéro de chèque"
-                      value={numeroCheque}
-                      onChange={(e) => setNumeroCheque(e.target.value)}
-                      required
-                    />
-                    <Input
-                      label="Banque"
+              </div>
+              {modePaiement === 'CHEQUE' && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-slate-700">Banque</label>
+                    <select
                       value={banque}
                       onChange={(e) => setBanque(e.target.value)}
-                    />
-                  </>
-                )}
-              </div>
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      <option value="">Sélectionner...</option>
+                      {BANQUES_COTE_DIVOIRE.map((b) => (
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Input
+                    label="Numéro de chèque"
+                    value={numeroCheque}
+                    onChange={(e) => setNumeroCheque(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
           )}
         </Card>

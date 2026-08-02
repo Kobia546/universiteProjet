@@ -9,6 +9,7 @@ import { Input } from '../../shared/components/ui/Input';
 import { fetchEtudiants, fetchEtudiant } from '../students/api/studentsApi';
 import { fetchInscription } from '../enrollments/api/enrollmentsApi';
 import { createPaiement, type ModePaiement } from './api/paymentsApi';
+import { BANQUES_COTE_DIVOIRE } from '../../shared/data/banques';
 import { formatMontant } from '../../shared/lib/format';
 
 const MODES_PAIEMENT: { value: ModePaiement; label: string }[] = [
@@ -287,18 +288,32 @@ export function NewPaymentPage() {
               Le numéro exact écrit sur le reçu physique remis à la personne.
             </p>
           </div>
-          {modePaiement === 'CHEQUE' && (
-            <>
-              <Input
-                label="Numéro de chèque"
-                value={numeroCheque}
-                onChange={(e) => setNumeroCheque(e.target.value)}
-                required
-              />
-              <Input label="Banque" value={banque} onChange={(e) => setBanque(e.target.value)} />
-            </>
-          )}
         </div>
+        {modePaiement === 'CHEQUE' && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Banque</label>
+              <select
+                value={banque}
+                onChange={(e) => setBanque(e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">Sélectionner...</option>
+                {BANQUES_COTE_DIVOIRE.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Input
+              label="Numéro de chèque"
+              value={numeroCheque}
+              onChange={(e) => setNumeroCheque(e.target.value)}
+              required
+            />
+          </div>
+        )}
 
         {mutation.isError && (
           <p className="text-sm text-red-600">

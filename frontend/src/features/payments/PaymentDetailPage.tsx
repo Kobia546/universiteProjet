@@ -38,10 +38,16 @@ export function PaymentDetailPage() {
   const resteAPayer = Number(paiement.inscription.montantTotalDu) - totalPaye;
   const prochaineEcheance = echeances.find((e) => e.statut !== 'SOLDE');
 
+  // Numéro auto-généré par l'app (séquentiel), formaté REC-année-000045 —
+  // distinct du numéro de carnet saisi manuellement (paiement.recu.numeroRecu).
+  const numeroRecuApp = paiement.recu
+    ? `REC-${new Date(paiement.recu.dateEmission).getFullYear()}-${String(paiement.recu.numeroSequence).padStart(6, '0')}`
+    : '—';
+
   return (
     <div>
       <PageHeader
-        title={`Reçu N° ${paiement.recu?.numeroRecu ?? '—'}`}
+        title={`Reçu N° ${numeroRecuApp}`}
         description={`${paiement.etudiant.prenom} ${paiement.etudiant.nom} — ${formatDateHeure(paiement.datePaiement)}`}
         action={
           <div className="flex flex-wrap gap-2 print:hidden">
@@ -106,13 +112,20 @@ export function PaymentDetailPage() {
           <h2 className="text-2xl font-bold text-slate-900">
             Reçu{' '}
             <span className="font-mono text-red-600">
-              N° {paiement.recu?.numeroRecu ?? '—'}
+              N° {numeroRecuApp}
             </span>
           </h2>
           <Badge variant={paiement.statut === 'VALIDE' ? 'success' : 'danger'}>
             {paiement.statut}
           </Badge>
         </div>
+
+        {paiement.recu?.numeroRecu && (
+          <p className="mb-2 text-xs text-slate-500">
+            N° de carnet (reçu physique) :{' '}
+            <span className="font-mono font-medium text-slate-700">{paiement.recu.numeroRecu}</span>
+          </p>
+        )}
 
         <div className="mb-6 flex justify-end border-b border-dotted border-slate-300 pb-2 text-xs text-slate-400">
           B.P.F. : ..........................................
