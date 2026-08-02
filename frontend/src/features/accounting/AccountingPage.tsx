@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, FileDown } from 'lucide-react';
+import { Plus, FileDown, Wallet } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
@@ -23,19 +23,24 @@ import { exporterPdf } from '../../shared/lib/exporterPdf';
 type Onglet = 'operation-caisse' | 'recettes' | 'depenses' | 'centralisateur';
 
 export function AccountingPage() {
-  const [onglet, setOnglet] = useState<Onglet>('operation-caisse');
+  const [onglet, setOnglet] = useState<Onglet>('centralisateur');
 
   return (
     <div>
       <PageHeader
         title="Comptabilité"
         description="EP703 (recettes) · EP704 (dépenses) · EP706 (centralisateur)"
+        action={
+          <Button onClick={() => setOnglet('operation-caisse')}>
+            <Plus className="h-4 w-4" />
+            Nouvelle opération de caisse
+          </Button>
+        }
       />
 
       <div className="mb-6 flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
         {(
           [
-            { key: 'operation-caisse', label: 'Opération de caisse' },
             { key: 'centralisateur', label: 'EP706 — Centralisateur' },
             { key: 'recettes', label: 'EP703 — Recettes' },
             { key: 'depenses', label: 'EP704 — Dépenses' },
@@ -88,9 +93,12 @@ function OperationCaisseTab() {
 
   return (
     <Card className="mx-auto max-w-xl">
-      <h2 className="mb-1 text-center font-serif text-lg font-bold uppercase tracking-wide text-slate-900">
-        Bon de caisse
-      </h2>
+      <div className="mb-4 flex items-center justify-center gap-2">
+       
+        <h2 className="text-center font-serif text-lg font-bold uppercase tracking-wide text-slate-900">
+          Operation de Caisse
+        </h2>
+      </div>
       <p className="mb-5 text-center text-xs text-slate-500">
         Toute opération enregistrée ici crée automatiquement une écriture EP703 (Entrée) ou EP704
         (Sortie) — visible dans les onglets correspondants.
@@ -154,7 +162,8 @@ function OperationCaisseTab() {
 
       {mutation.isError && (
         <p className="mt-3 text-sm text-red-600">
-          Une erreur est survenue lors de l'enregistrement.
+          {(mutation.error as any)?.response?.data?.message ||
+            "Une erreur est survenue lors de l'enregistrement."}
         </p>
       )}
       {mutation.isSuccess && (
@@ -201,7 +210,7 @@ function CentralisateurTab() {
         ['Total recettes (EP703)', formatMontantPdf(data.totalRecettes)],
         ['Total dépenses (EP704)', formatMontantPdf(data.totalDepenses)],
         ['Solde', formatMontantPdf(data.solde)],
-        ['Nombre d\'opérations', String(data.nombreOperations)],
+        ["Nombre d'opérations", String(data.nombreOperations)],
       ],
       nomFichier: 'ep706-centralisateur',
     });
