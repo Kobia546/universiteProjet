@@ -57,13 +57,12 @@ export class DashboardService {
         where: {
           statut: 'VALIDE',
           date: { gte: debutMois, lte: finMois },
-          ...(anneeCiblee ? filtreRecettesAnnee : {}),
         },
       }),
       this.prisma.ecritureDepense.findMany({
         where: {
           statut: 'VALIDE',
-          ...(anneeCiblee ? filtreDepensesAnnee : { date: { gte: debutMois, lte: finMois } }),
+          date: { gte: debutMois, lte: finMois },
         },
       }),
       this.prisma.echeance.findMany({
@@ -83,7 +82,6 @@ export class DashboardService {
       this.prisma.ecritureDepense.findMany({
         where: {
           statut: 'VALIDE',
-          ...(anneeCiblee ? filtreDepensesAnnee : {}),
         },
         orderBy: { date: 'desc' },
         take: 8,
@@ -92,15 +90,12 @@ export class DashboardService {
         where: {
           statut: 'VALIDE',
           date: { gte: debutHistorique },
-          ...(anneeCiblee ? filtreRecettesAnnee : {}),
         },
       }),
       this.prisma.ecritureDepense.findMany({
         where: {
           statut: 'VALIDE',
-          ...(anneeCiblee
-            ? filtreDepensesAnnee
-            : { date: { gte: debutHistorique, lte: finMois } }),
+          date: { gte: debutHistorique, lte: finMois },
         },
       }),
     ]);
