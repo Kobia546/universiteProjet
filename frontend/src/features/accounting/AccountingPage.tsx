@@ -463,37 +463,7 @@ function DepensesTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <h2 className="mb-3 font-serif text-[15px] font-semibold text-slate-900">Nouvelle dépense</h2>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1">
-            <Input
-              label="Libellé"
-              value={libelle}
-              onChange={(e) => setLibelle(e.target.value)}
-              placeholder="Ex : Achat fournitures bureau"
-            />
-          </div>
-          <div className="w-40">
-            <Input
-              label="Montant"
-              type="number"
-              min="0"
-              value={montant}
-              onChange={(e) => setMontant(e.target.value)}
-            />
-          </div>
-          <Button
-            disabled={!libelle || !montant}
-            isLoading={creerMutation.isPending}
-            onClick={() => creerMutation.mutate({ libelle, montant: Number(montant) })}
-          >
-            <Plus className="h-4 w-4" />
-            Ajouter
-          </Button>
-        </div>
-      </Card>
-
+      
       <Card className="overflow-hidden p-0">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
           <p className="text-xs text-slate-500">
