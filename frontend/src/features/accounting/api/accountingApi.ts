@@ -16,7 +16,7 @@ export interface EcritureRecette {
 
 export interface EcritureDepense {
   id: string;
-  numeroCheque: string;
+  numeroOperation: string;
   date: string;
   libelle: string;
   requerant?: string | null;
@@ -28,6 +28,7 @@ export interface EcritureDepense {
 }
 
 export type TypeOperationCaisse = 'ENTREE' | 'SORTIE';
+export type TypePaiementOperation = 'ESPECES' | 'CHEQUE';
 
 export interface CreateOperationCaisseInput {
   type: TypeOperationCaisse;
@@ -35,6 +36,9 @@ export interface CreateOperationCaisseInput {
   objet: string;
   montant: number;
   date?: string;
+  modePaiement?: TypePaiementOperation;
+  banque?: string;
+  numeroCheque?: string;
 }
 
 export async function creerOperationCaisse(

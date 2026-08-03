@@ -15,10 +15,12 @@ import {
   contrePasserDepense,
   creerOperationCaisse,
   type TypeOperationCaisse,
+  type TypePaiementOperation,
 } from './api/accountingApi';
 import { formatDate, formatMontant, formatMontantPdf } from '../../shared/lib/format';
 import { montantEnLettres } from '../../shared/lib/montantEnLettres';
 import { exporterPdf } from '../../shared/lib/exporterPdf';
+import { BANQUES_COTE_DIVOIRE } from '../../shared/data/banques';
 
 type Onglet = 'operation-caisse' | 'recettes' | 'depenses' | 'centralisateur';
 
@@ -70,9 +72,12 @@ export function AccountingPage() {
 
 function OperationCaisseTab() {
   const [type, setType] = useState<TypeOperationCaisse>('ENTREE');
+  const [modePaiement, setModePaiement] = useState<TypePaiementOperation>('ESPECES');
   const [requerant, setRequerant] = useState('');
   const [objet, setObjet] = useState('');
   const [montant, setMontant] = useState('');
+  const [banque, setBanque] = useState('');
+  const [numeroCheque, setNumeroCheque] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const queryClient = useQueryClient();
 
@@ -85,11 +90,18 @@ function OperationCaisseTab() {
       setRequerant('');
       setObjet('');
       setMontant('');
+      setBanque('');
+      setNumeroCheque('');
+      setModePaiement('ESPECES');
       setDate(new Date().toISOString().slice(0, 10));
     },
   });
 
-  const peutValider = objet && montant && Number(montant) > 0;
+  const peutValider =
+    objet &&
+    montant &&
+    Number(montant) > 0 &&
+    (modePaiement !== 'CHEQUE' || (banque.trim() && numeroCheque.trim()));
 
   return (
     <Card className="mx-auto max-w-xl">
@@ -145,13 +157,52 @@ function OperationCaisseTab() {
           value={objet}
           onChange={(e) => setObjet(e.target.value)}
         />
-        <Input
-          label="Montant (F CFA)"
-          type="number"
-          min="0"
-          value={montant}
-          onChange={(e) => setMontant(e.target.value)}
-        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Type de paiement</label>
+            <select
+              value={modePaiement}
+              onChange={(e) => setModePaiement(e.target.value as TypePaiementOperation)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="ESPECES">Espèces</option>
+              <option value="CHEQUE">Chèque</option>
+            </select>
+          </div>
+          <Input
+            label="Montant (F CFA)"
+            type="number"
+            min="0"
+            value={montant}
+            onChange={(e) => setMontant(e.target.value)}
+          />
+        </div>
+
+        {modePaiement === 'CHEQUE' && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Banque</label>
+              <select
+                value={banque}
+                onChange={(e) => setBanque(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">Sélectionner une banque</option>
+                {BANQUES_COTE_DIVOIRE.map((nomBanque) => (
+                  <option key={nomBanque} value={nomBanque}>
+                    {nomBanque}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Input
+              label="Numéro de chèque"
+              placeholder="Ex : 001254"
+              value={numeroCheque}
+              onChange={(e) => setNumeroCheque(e.target.value)}
+            />
+          </div>
+        )}
         {montant && Number(montant) > 0 && (
           <p className="text-xs italic text-slate-500">
             {montantEnLettres(Number(montant))}
@@ -184,6 +235,9 @@ function OperationCaisseTab() {
               objet,
               montant: Number(montant),
               date,
+              modePaiement,
+              banque: modePaiement === 'CHEQUE' ? banque : undefined,
+              numeroCheque: modePaiement === 'CHEQUE' ? numeroCheque : undefined,
             })
           }
         >
@@ -393,9 +447,9 @@ function DepensesTab() {
     exporterPdf({
       titre: 'EP704 — Registre des dépenses',
       sousTitre: `${depenses.length} écriture(s) — export du ${formatDate(new Date().toISOString())}`,
-      colonnes: ['N° chèque', 'Date', 'Libellé', 'Débit/Crédit', 'Montant', 'Statut'],
+      colonnes: ['N° opération', 'Date', 'Libellé', 'Débit/Crédit', 'Montant', 'Statut'],
       lignes: depenses.map((d) => [
-        d.numeroCheque,
+        d.numeroOperation,
         formatDate(d.date),
         d.libelle,
         `${d.compteDebit} / ${d.compteCredit}`,
@@ -462,7 +516,7 @@ function DepensesTab() {
           <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
               <tr>
-                <th className="px-5 py-3">N° chèque</th>
+                <th className="px-5 py-3">N° opération</th>
                 <th className="px-5 py-3">Date</th>
                 <th className="px-5 py-3">Libellé</th>
                 <th className="px-5 py-3 text-right">Montant</th>
@@ -473,7 +527,7 @@ function DepensesTab() {
             <tbody className="divide-y divide-slate-100">
               {depenses.map((d) => (
                 <tr key={d.id}>
-                  <td className="px-5 py-3 font-mono text-xs text-slate-600">{d.numeroCheque}</td>
+                  <td className="px-5 py-3 font-mono text-xs text-slate-600">{d.numeroOperation}</td>
                   <td className="px-5 py-3 text-slate-500">{formatDate(d.date)}</td>
                   <td className="px-5 py-3 text-slate-900">{d.libelle}</td>
                   <td className="px-5 py-3 text-right font-medium">{formatMontant(d.montant)}</td>

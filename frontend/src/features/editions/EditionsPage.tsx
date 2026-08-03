@@ -84,7 +84,7 @@ export function EditionsPage() {
       })),
       ...depenses.map((d) => ({
         date: d.date,
-        numero: d.numeroCheque,
+        numero: d.numeroOperation,
         libelle: d.libelle,
         type: 'Dépense',
         montant: Number(d.montant),

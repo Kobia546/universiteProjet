@@ -248,7 +248,7 @@ function DepensesTab() {
             <table className="w-full min-w-[560px] text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
                 <tr>
-                  <th className="px-5 py-3">N° chèque</th>
+                  <th className="px-5 py-3">N° opération</th>
                   <th className="px-5 py-3">Date</th>
                   <th className="px-5 py-3">Libellé</th>
                   <th className="px-5 py-3 text-right">Montant</th>
@@ -258,7 +258,7 @@ function DepensesTab() {
               <tbody className="divide-y divide-slate-100">
                 {depenses.map((d) => (
                   <tr key={d.id}>
-                    <td className="px-5 py-3 font-mono text-xs text-slate-600">{d.numeroCheque}</td>
+                    <td className="px-5 py-3 font-mono text-xs text-slate-600">{d.numeroOperation}</td>
                     <td className="px-5 py-3 text-slate-500">{formatDate(d.date)}</td>
                     <td className="px-5 py-3 text-slate-900">{d.libelle}</td>
                     <td className="px-5 py-3 text-right font-medium">{formatMontant(d.montant)}</td>
