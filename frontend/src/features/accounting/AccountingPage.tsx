@@ -10,7 +10,6 @@ import {
   fetchEp703,
   fetchEp704,
   fetchEp706,
-  creerDepense,
   contrePasserRecette,
   contrePasserDepense,
   creerOperationCaisse,
@@ -87,6 +86,7 @@ function OperationCaisseTab() {
       queryClient.invalidateQueries({ queryKey: ['ep703'] });
       queryClient.invalidateQueries({ queryKey: ['ep704'] });
       queryClient.invalidateQueries({ queryKey: ['ep706'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       setRequerant('');
       setObjet('');
       setMontant('');
@@ -412,23 +412,11 @@ function RecettesTab() {
 }
 
 function DepensesTab() {
-  const [libelle, setLibelle] = useState('');
-  const [montant, setMontant] = useState('');
   const queryClient = useQueryClient();
 
   const { data: depenses, isLoading } = useQuery({
     queryKey: ['ep704'],
     queryFn: () => fetchEp704(),
-  });
-
-  const creerMutation = useMutation({
-    mutationFn: creerDepense,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ep704'] });
-      queryClient.invalidateQueries({ queryKey: ['ep706'] });
-      setLibelle('');
-      setMontant('');
-    },
   });
 
   const contrePasserMutation = useMutation({

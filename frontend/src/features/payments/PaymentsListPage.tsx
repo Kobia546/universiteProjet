@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
@@ -13,6 +13,7 @@ import { formatDateHeure, formatMontant } from '../../shared/lib/format';
 export function PaymentsListPage() {
   const navigate = useNavigate();
   const [anneeFiltre, setAnneeFiltre] = useState('');
+  const [recherche, setRecherche] = useState('');
 
   const { data: paiements, isLoading } = useQuery({
     queryKey: ['paiements', anneeFiltre],
@@ -23,6 +24,25 @@ export function PaymentsListPage() {
     queryKey: ['annees-universitaires'],
     queryFn: fetchAnneesUniversitaires,
   });
+
+  const paiementsFiltres = useMemo(() => {
+    const terme = recherche.trim().toLowerCase();
+    if (!terme) return paiements ?? [];
+    return (paiements ?? []).filter((paiement) => {
+      const texte = [
+        paiement.recu?.numeroRecu,
+        paiement.etudiant.prenom,
+        paiement.etudiant.nom,
+        paiement.motif,
+        paiement.modePaiement,
+        paiement.statut,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return texte.includes(terme);
+    });
+  }, [paiements, recherche]);
 
   return (
     <div>
@@ -37,7 +57,7 @@ export function PaymentsListPage() {
                 onChange={(e) => setAnneeFiltre(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
-                <option value="">Tout</option>
+                <option value="">Toutes les années</option>
                 {annees?.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.libelle} {a.active ? '(active)' : ''}
@@ -52,6 +72,16 @@ export function PaymentsListPage() {
           </div>
         }
       />
+
+      <div className="mb-4 relative max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Rechercher nom, reçu, motif..."
+          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+      </div>
 
       <Card className="overflow-hidden p-0">
         {isLoading ? (
@@ -73,7 +103,7 @@ export function PaymentsListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paiements.map((paiement) => (
+              {paiementsFiltres.map((paiement) => (
                 <tr
                   key={paiement.id}
                   onClick={() => navigate(`/paiements/${paiement.id}`)}

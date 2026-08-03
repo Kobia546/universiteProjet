@@ -29,10 +29,12 @@ export function MobileNavDrawer({
         }`}
       >
         <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5">
-          <div className="flex items-center gap-2.5">
-            <img src="/logos/universite.png" alt="" className="h-8 w-8 object-contain" />
-            <span className="font-serif text-[15px] font-semibold text-slate-900">
-              ERP Université
+          <div className="flex items-center gap-2">
+            <img src="/logos/universite.png" alt="Université Félix Houphouët-Boigny" className="h-8 w-8 object-contain" />
+            
+            <span className="font-serif text-[10px] font-semibold text-slate-900">
+              SYFIC - SJAP
+              <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-8 w-8 object-contain" />
             </span>
           </div>
           <button
@@ -63,6 +65,21 @@ export function MobileNavDrawer({
             </NavLink>
           ))}
         </nav>
+
+        {/* Zone réservée à la marque du propriétaire/développeur.
+            Remplacez /logos/proprietaire.png par votre logo (même dossier public/logos). */}
+        <div className="border-t border-slate-100 p-3">
+          <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-200 px-3 py-2">
+            <img
+              src="/logos/proprietaire.png"
+              alt="Logo propriétaire"
+              className="h-8 max-w-full object-contain"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        </div>
       </aside>
     </div>
   );
