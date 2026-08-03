@@ -99,10 +99,10 @@ export class AccountingService {
   // ---- EP704 : Dépenses ----
 
   async createDepense(dto: CreateDepenseDto, agentId: string) {
-    const numeroCheque = await this.numerotation.genererNumeroCheque();
+    const numeroOperation = await this.numerotation.genererNumeroOperation();
     const depense = await this.prisma.ecritureDepense.create({
       data: {
-        numeroCheque,
+        numeroOperation,
         libelle: dto.libelle,
         requerant: dto.requerant,
         montant: dto.montant,
@@ -176,6 +176,7 @@ export class AccountingService {
           requerant: dto.requerant,
           montant: dto.montant,
           date: dto.date,
+          pieceJustificativeUrl: dto.modePaiement === 'CHEQUE' ? `cheque:${dto.banque || ''}:${dto.numeroCheque || ''}` : undefined,
         },
         agentId,
       );
@@ -187,6 +188,7 @@ export class AccountingService {
         requerant: dto.requerant,
         montant: dto.montant,
         date: dto.date,
+        justificatifUrl: dto.modePaiement === 'CHEQUE' ? `cheque:${dto.banque || ''}:${dto.numeroCheque || ''}` : undefined,
       },
       agentId,
     );

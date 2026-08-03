@@ -5,6 +5,11 @@ export enum TypeOperationCaisse {
   SORTIE = 'SORTIE',
 }
 
+export enum TypePaiementOperation {
+  ESPECES = 'ESPECES',
+  CHEQUE = 'CHEQUE',
+}
+
 export class CreateOperationCaisseDto {
   @IsEnum(TypeOperationCaisse, { message: 'Le type doit être ENTREE ou SORTIE' })
   type: TypeOperationCaisse;
@@ -24,4 +29,16 @@ export class CreateOperationCaisseDto {
   @IsOptional()
   @IsDateString()
   date?: string;
+
+  @IsOptional()
+  @IsEnum(TypePaiementOperation, { message: 'Le type de paiement doit être ESPECES ou CHEQUE' })
+  modePaiement?: TypePaiementOperation;
+
+  @IsOptional()
+  @IsString()
+  banque?: string;
+
+  @IsOptional()
+  @IsString()
+  numeroCheque?: string;
 }

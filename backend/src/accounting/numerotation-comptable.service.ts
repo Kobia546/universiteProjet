@@ -14,12 +14,12 @@ export class NumerotationComptableService {
     return `BR-${annee}-${String(count + 1).padStart(6, '0')}`;
   }
 
-  /** Numéro de chèque EP704, type CHQ-2026-000001 */
-  async genererNumeroCheque(): Promise<string> {
+  /** Numéro d’opération EP704, type OP-2026-000001 */
+  async genererNumeroOperation(): Promise<string> {
     const annee = new Date().getFullYear();
     const count = await this.prisma.ecritureDepense.count({
-      where: { numeroCheque: { startsWith: `CHQ-${annee}-` } },
+      where: { numeroOperation: { startsWith: `OP-${annee}-` } },
     });
-    return `CHQ-${annee}-${String(count + 1).padStart(6, '0')}`;
+    return `OP-${annee}-${String(count + 1).padStart(6, '0')}`;
   }
 }

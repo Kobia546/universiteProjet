@@ -354,7 +354,7 @@ model EcritureRecette {
 
 model EcritureDepense {
   id              String         @id @default(uuid())
-  numeroCheque    String         @unique
+  numeroOperation String         @unique
   date            DateTime       @default(now())
   libelle         String
   // Qui a demandé/remis l'opération — champ du "Bon de caisse" papier.
