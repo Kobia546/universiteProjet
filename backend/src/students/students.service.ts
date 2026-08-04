@@ -25,6 +25,13 @@ export class StudentsService {
   async findAll(params: { recherche?: string; filiereId?: string; anneeUniversitaireId?: string }) {
     const { recherche, filiereId, anneeUniversitaireId } = params;
 
+    // La recherche texte porte sur nom/prénom/matricule/téléphone. En plus,
+    // si le texte saisi ressemble à une date (jj/mm/aaaa, jj-mm-aaaa ou
+    // aaaa-mm-jj), on élargit la recherche à la date de naissance du jour
+    // correspondant — pratique pour retrouver quelqu'un via son numéro de
+    // téléphone ou sa date de naissance plutôt que son seul matricule.
+    const dateRecherchee = recherche ? this.parseDateRecherche(recherche) : null;
+
     const etudiants = await this.prisma.etudiant.findMany({
       where: {
         AND: [
@@ -34,6 +41,17 @@ export class StudentsService {
                   { nom: { contains: recherche, mode: 'insensitive' } },
                   { prenom: { contains: recherche, mode: 'insensitive' } },
                   { matricule: { contains: recherche, mode: 'insensitive' } },
+                  { telephone: { contains: recherche, mode: 'insensitive' } },
+                  ...(dateRecherchee
+                    ? [
+                        {
+                          dateNaissance: {
+                            gte: dateRecherchee.debut,
+                            lt: dateRecherchee.fin,
+                          },
+                        },
+                      ]
+                    : []),
                 ],
               }
             : {},
@@ -88,6 +106,34 @@ export class StudentsService {
         dateInscription: inscriptionAnnee?.dateInscription ?? null,
       };
     });
+  }
+
+  /**
+   * Tente d'interpréter le texte de recherche comme une date de naissance
+   * (formats acceptés : jj/mm/aaaa, jj-mm-aaaa, aaaa-mm-jj). Retourne la
+   * plage [début, fin) du jour correspondant, ou null si ça ne ressemble
+   * pas à une date.
+   */
+  private parseDateRecherche(texte: string): { debut: Date; fin: Date } | null {
+    const texteNettoye = texte.trim();
+
+    let jour: number, mois: number, annee: number;
+
+    const matchJjMmAaaa = texteNettoye.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    const matchAaaaMmJj = texteNettoye.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+    if (matchJjMmAaaa) {
+      [, jour, mois, annee] = matchJjMmAaaa.map(Number) as unknown as [string, number, number, number];
+    } else if (matchAaaaMmJj) {
+      [, annee, mois, jour] = matchAaaaMmJj.map(Number) as unknown as [string, number, number, number];
+    } else {
+      return null;
+    }
+
+    const debut = new Date(Date.UTC(annee, mois - 1, jour));
+    if (Number.isNaN(debut.getTime())) return null;
+    const fin = new Date(Date.UTC(annee, mois - 1, jour + 1));
+    return { debut, fin };
   }
 
   async findOne(id: string) {

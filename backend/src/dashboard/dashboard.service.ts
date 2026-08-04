@@ -7,9 +7,16 @@ export class DashboardService {
 
   async getStats(anneeUniversitaireId?: string) {
     const maintenant = new Date();
-    const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
-    const finMois = new Date(maintenant.getFullYear(), maintenant.getMonth() + 1, 0, 23, 59, 59);
-    const debutHistorique = new Date(maintenant.getFullYear(), maintenant.getMonth() - 5, 1);
+    // Bornes de mois calculées en UTC (et non avec l'heure locale du
+    // serveur) — les dates saisies via un <input type="date"> sont
+    // interprétées en UTC par JavaScript, donc comparer avec des bornes
+    // locales pouvait décaler des écritures pourtant du mois en cours
+    // selon le fuseau horaire configuré sur la machine qui héberge l'API.
+    const debutMois = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), 1));
+    const finMois = new Date(
+      Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() + 1, 0, 23, 59, 59),
+    );
+    const debutHistorique = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() - 5, 1));
 
     // Si aucune année n'est précisée, on prend l'année active par défaut —
     // sinon les statistiques mélangeraient toutes les années confondues.
