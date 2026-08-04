@@ -15,7 +15,7 @@ import {
   modifierDateInscription,
   type Echeance,
 } from './api/enrollmentsApi';
-import { formatDate, formatMontant } from '../../shared/lib/format';
+import { formatDate, formatDateHeure, formatMontant } from '../../shared/lib/format';
 
 const VARIANTE_STATUT_ECHEANCE: Record<string, 'success' | 'danger' | 'warning' | 'default'> = {
   SOLDE: 'success',

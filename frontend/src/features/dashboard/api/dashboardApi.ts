@@ -2,6 +2,7 @@ import { apiClient } from '../../../shared/lib/apiClient';
 
 export interface DashboardStats {
   anneeUniversitaire: { id: string; libelle: string } | null;
+  moisAffiche: string;
   totalUniversitaires: number;
   nouveauxInscrits: number;
   revenusDuMois: number;

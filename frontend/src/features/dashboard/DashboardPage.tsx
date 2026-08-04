@@ -22,6 +22,17 @@ import { formatDate, formatMontant } from '../../shared/lib/format';
 
 const COULEURS = ['#2b6249', '#4472c4', '#8cbfa7', '#7f9fd6', '#1a3d2e', '#a8c8b8'];
 
+const NOMS_MOIS = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
+
+function libelleMoisAffiche(moisAffiche?: string): string {
+  if (!moisAffiche) return 'du mois en cours';
+  const [annee, mois] = moisAffiche.split('-').map(Number);
+  return `— ${NOMS_MOIS[mois - 1]} ${annee}`;
+}
+
 export function DashboardPage() {
   const [anneeSelectionnee, setAnneeSelectionnee] = useState<string>('');
 
@@ -36,6 +47,7 @@ export function DashboardPage() {
   });
 
   const libelleAnnee = stats?.anneeUniversitaire?.libelle ?? '';
+  const libelleMois = libelleMoisAffiche(stats?.moisAffiche);
   const dernieresOperationsAffichees = stats?.dernieresOperations.slice(0, 5) ?? [];
 
   return (
@@ -79,12 +91,12 @@ export function DashboardPage() {
               icon={GraduationCap}
             />
             <KpiCard
-              label="Recettes du mois en cours"
+              label={`Recettes ${libelleMois}`}
               value={formatMontant(stats.revenusDuMois)}
               icon={TrendingUp}
             />
             <KpiCard
-              label="Dépenses du mois en cours"
+              label={`Dépenses ${libelleMois}`}
               value={formatMontant(stats.depensesDuMois)}
               icon={TrendingDown}
             />
