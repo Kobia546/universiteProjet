@@ -7,16 +7,6 @@ export class DashboardService {
 
   async getStats(anneeUniversitaireId?: string) {
     const maintenant = new Date();
-    // Bornes de mois calculées en UTC (et non avec l'heure locale du
-    // serveur) — les dates saisies via un <input type="date"> sont
-    // interprétées en UTC par JavaScript, donc comparer avec des bornes
-    // locales pouvait décaler des écritures pourtant du mois en cours
-    // selon le fuseau horaire configuré sur la machine qui héberge l'API.
-    const debutMois = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), 1));
-    const finMois = new Date(
-      Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() + 1, 0, 23, 59, 59),
-    );
-    const debutHistorique = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() - 5, 1));
 
     // Si aucune année n'est précisée, on prend l'année active par défaut —
     // sinon les statistiques mélangeraient toutes les années confondues.
@@ -28,23 +18,55 @@ export class DashboardService {
     const anneeDebut = anneeCiblee ? new Date(anneeCiblee.dateDebut) : null;
     const anneeFin = anneeCiblee ? new Date(anneeCiblee.dateFin) : null;
 
-    const inscriptionsAnneePourRecettes = anneeCiblee
-      ? await this.prisma.inscription.findMany({
-          where: { statut: { not: 'ANNULEE' }, anneeUniversitaireId: anneeCiblee.id },
-          select: { id: true },
-        })
-      : [];
-    const inscriptionIdsPourRecettes = inscriptionsAnneePourRecettes.map((i) => i.id);
+    // Le mois utilisé pour les cartes Recettes/Dépenses doit toujours
+    // appartenir à l'année universitaire sélectionnée — jamais un mois
+    // extérieur à sa période. Exemple concret : si l'année active est
+    // 2025-2026 (on est en août 2026) et qu'on sélectionne 2024-2025 (déjà
+    // terminée, aucune donnée saisie), il ne faut PAS afficher les
+    // données d'août 2026 (mois réel) sous prétexte qu'elles existent
+    // ailleurs — il faut rester dans la période de 2024-2025, où il n'y a
+    // effectivement rien, donc 0 partout.
+    //
+    // - Si la période de l'année sélectionnée couvre aujourd'hui → mois
+    //   civil actuel (cas normal : l'année en cours).
+    // - Sinon (année déjà terminée, ou pas encore commencée) → on prend le
+    //   premier mois de cette année-là, qui reste dans sa période.
+    let debutMois: Date;
+    let finMois: Date;
 
+    if (anneeDebut && anneeFin && maintenant >= anneeDebut && maintenant <= anneeFin) {
+      debutMois = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), 1));
+      finMois = new Date(
+        Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() + 1, 0, 23, 59, 59),
+      );
+    } else if (anneeDebut) {
+      debutMois = new Date(Date.UTC(anneeDebut.getUTCFullYear(), anneeDebut.getUTCMonth(), 1));
+      finMois = new Date(
+        Date.UTC(anneeDebut.getUTCFullYear(), anneeDebut.getUTCMonth() + 1, 0, 23, 59, 59),
+      );
+    } else {
+      debutMois = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), 1));
+      finMois = new Date(
+        Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() + 1, 0, 23, 59, 59),
+      );
+    }
+
+    const debutHistorique = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() - 5, 1));
+
+    // Une recette peut être rattachée à un paiement d'étudiant (donc à une
+    // inscription, donc à une année universitaire), OU saisie manuellement
+    // sans lien avec un paiement précis (subvention, don...). Dans ce
+    // second cas, impossible de savoir à quelle année elle appartient — on
+    // la garde donc dans toutes les périodes où sa date tombe, plutôt que
+    // de la faire disparaître complètement dès qu'une année est choisie.
     const filtreRecettesAnnee = anneeCiblee
       ? {
-          paiement: {
-            inscriptionId: { in: inscriptionIdsPourRecettes },
-          },
+          OR: [
+            { paiementId: null },
+            { paiement: { inscription: { anneeUniversitaireId: anneeCiblee.id } } },
+          ],
         }
       : {};
-
-    const filtreDepensesAnnee = anneeDebut && anneeFin ? { date: { gte: anneeDebut, lte: anneeFin } } : {};
 
     const [
       inscriptionsAnnee,
@@ -64,11 +86,15 @@ export class DashboardService {
         where: {
           statut: 'VALIDE',
           date: { gte: debutMois, lte: finMois },
+          ...filtreRecettesAnnee,
         },
       }),
       this.prisma.ecritureDepense.findMany({
         where: {
           statut: 'VALIDE',
+          // Une dépense n'a aucun lien possible avec une année universitaire
+          // (achat de fournitures, frais de fonctionnement...) — seule la
+          // date la situe dans le temps, donc pas de filtre d'année ici.
           date: { gte: debutMois, lte: finMois },
         },
       }),
@@ -198,6 +224,10 @@ export class DashboardService {
       anneeUniversitaire: anneeCiblee
         ? { id: anneeCiblee.id, libelle: anneeCiblee.libelle }
         : null,
+      // Mois effectivement utilisé pour les cartes Recettes/Dépenses,
+      // au format "YYYY-MM" — permet au frontend d'afficher le bon
+      // libellé (ex: "Septembre 2023") quand ce n'est pas le mois actuel.
+      moisAffiche: `${debutMois.getUTCFullYear()}-${String(debutMois.getUTCMonth() + 1).padStart(2, '0')}`,
       totalUniversitaires,
       nouveauxInscrits: inscriptionsAnnee.length,
       revenusDuMois,
