@@ -18,16 +18,14 @@ export function Sidebar() {
       </div>
       
       <nav className="flex-1 space-y-1 p-3 pt-2">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {navItems.map(({ to, label, icon: Icon, end, accentActifClassName, accentSurvolClassName }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              `flex items-center gap-3 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm font-medium transition-colors ${
+                isActive ? accentActifClassName : `text-slate-600 hover:text-slate-900 ${accentSurvolClassName}`
               }`
             }
           >

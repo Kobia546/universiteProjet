@@ -77,7 +77,7 @@ export function NewEnrollmentPage() {
           <label className="mb-1.5 block text-sm font-medium text-slate-700">Étudiant</label>
           {!etudiantPreselectionne && (
             <Input
-              placeholder="Rechercher par nom, prénom ou matricule..."
+              placeholder="Rechercher par nom, prénom, matricule, numéro ou date de naissance (jj/mm/aaaa)..."
               value={recherche}
               onChange={(e) => setRecherche(e.target.value)}
             />

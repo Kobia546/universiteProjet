@@ -246,7 +246,7 @@ export function StudentsListPage() {
           <input
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Rechercher par nom, prénom ou matricule..."
+            placeholder="Rechercher par nom, prénom, matricule, numéro ou date de naissance..."
             className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm
               placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />

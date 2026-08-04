@@ -75,21 +75,19 @@ export function PaymentDetailPage() {
 
       {/* Reçu imprimable, mise en page façon carnet de reçus papier */}
       <Card className="mx-auto max-w-2xl border-2 border-slate-800/10 print:border-none print:shadow-none">
-        {/* En-tête */}
-        <div className="mb-4 flex items-start justify-between border-b-2 border-dashed border-slate-200 pb-4">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logos/universite.png"
-              alt="Université Félix Houphouët-Boigny"
-              className="h-14 w-14 shrink-0 object-contain"
-            />
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-900" >
-                Filières Professionnalisées UFR SJAP
-              </p>
-              <p className="text-xs text-slate-500">BP V179</p>
-              <p className="text-xs text-slate-500">Cel. : 01 41 03 17 24 / 01 40 83 56 52</p>
-            </div>
+        {/* En-tête, écritures centrées entre les deux logos */}
+        <div className="mb-4 flex items-center justify-between gap-3 border-b-2 border-dashed border-slate-200 pb-4">
+          <img
+            src="/logos/universite.png"
+            alt="Université Félix Houphouët-Boigny"
+            className="h-14 w-14 shrink-0 object-contain"
+          />
+          <div className="flex-1 text-center">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-900">
+              Filières Professionnalisées UFR SJAP
+            </p>
+            <p className="text-xs text-slate-500">BP V179</p>
+            <p className="text-xs text-slate-500">Cel. : 01 41 03 17 24 / 01 40 83 56 52</p>
           </div>
           <img
             src="/logos/ufr-sjap.png"

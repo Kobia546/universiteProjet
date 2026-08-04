@@ -19,6 +19,7 @@ import {
 import { formatDate, formatMontant, formatMontantPdf } from '../../shared/lib/format';
 import { montantEnLettres } from '../../shared/lib/montantEnLettres';
 import { exporterPdf } from '../../shared/lib/exporterPdf';
+import { ExportPreviewModal, type ExportPreviewData } from '../../shared/components/ui/ExportPreviewModal';
 import { BANQUES_COTE_DIVOIRE } from '../../shared/data/banques';
 
 type Onglet = 'operation-caisse' | 'recettes' | 'depenses' | 'centralisateur';
@@ -251,13 +252,15 @@ function OperationCaisseTab() {
 
 function CentralisateurTab() {
   const { data, isLoading } = useQuery({ queryKey: ['ep706'], queryFn: () => fetchEp706() });
+  const [apercu, setApercu] = useState<(ExportPreviewData & { nomFichier: string }) | null>(null);
+  const [exportEnCours, setExportEnCours] = useState(false);
 
   if (isLoading) return <p className="text-sm text-slate-500">Chargement...</p>;
   if (!data) return null;
 
-  function exporter() {
+  function ouvrirApercu() {
     if (!data) return;
-    exporterPdf({
+    setApercu({
       titre: 'EP706 — Centralisateur',
       sousTitre: `Export du ${formatDate(new Date().toISOString())}`,
       colonnes: ['Indicateur', 'Valeur'],
@@ -271,11 +274,22 @@ function CentralisateurTab() {
     });
   }
 
+  async function confirmerExport() {
+    if (!apercu) return;
+    setExportEnCours(true);
+    try {
+      await exporterPdf(apercu);
+      setApercu(null);
+    } finally {
+      setExportEnCours(false);
+    }
+  }
+
   return (
     <div>
       <div className="mb-4 flex justify-end">
         <button
-          onClick={exporter}
+          onClick={ouvrirApercu}
           className="flex items-center gap-1.5 text-xs font-medium text-brand-700 underline"
         >
           <FileDown className="h-3.5 w-3.5" />
@@ -307,11 +321,23 @@ function CentralisateurTab() {
           </p>
         </Card>
       </div>
+
+      <ExportPreviewModal
+        data={apercu}
+        onClose={() => setApercu(null)}
+        onConfirm={confirmerExport}
+        isExporting={exportEnCours}
+      />
     </div>
   );
 }
 
 function RecettesTab() {
+  const [rechercheLibelle, setRechercheLibelle] = useState('');
+  const [rechercheDate, setRechercheDate] = useState('');
+  const [apercu, setApercu] = useState<(ExportPreviewData & { nomFichier: string }) | null>(null);
+  const [exportEnCours, setExportEnCours] = useState(false);
+
   const { data: recettes, isLoading } = useQuery({
     queryKey: ['ep703'],
     queryFn: () => fetchEp703(),
@@ -326,16 +352,24 @@ function RecettesTab() {
     },
   });
 
-  function exporter() {
-    if (!recettes || recettes.length === 0) return;
-    const total = recettes
+  const recettesFiltrees = (recettes ?? []).filter((r) => {
+    const correspondLibelle = rechercheLibelle
+      ? r.libelle.toLowerCase().includes(rechercheLibelle.toLowerCase())
+      : true;
+    const correspondDate = rechercheDate ? r.date.slice(0, 10) === rechercheDate : true;
+    return correspondLibelle && correspondDate;
+  });
+
+  function ouvrirApercu() {
+    if (recettesFiltrees.length === 0) return;
+    const total = recettesFiltrees
       .filter((r) => r.statut === 'VALIDE')
       .reduce((s, r) => s + Number(r.montant), 0);
-    exporterPdf({
+    setApercu({
       titre: 'EP703 — Registre des recettes',
-      sousTitre: `${recettes.length} écriture(s) — export du ${formatDate(new Date().toISOString())}`,
+      sousTitre: `${recettesFiltrees.length} écriture(s) — export du ${formatDate(new Date().toISOString())}`,
       colonnes: ['Bordereau', 'Date', 'Libellé', 'Débit/Crédit', 'Montant', 'Statut'],
-      lignes: recettes.map((r) => [
+      lignes: recettesFiltrees.map((r) => [
         r.numeroBordereau,
         formatDate(r.date),
         r.libelle,
@@ -348,25 +382,67 @@ function RecettesTab() {
     });
   }
 
+  async function confirmerExport() {
+    if (!apercu) return;
+    setExportEnCours(true);
+    try {
+      await exporterPdf(apercu);
+      setApercu(null);
+    } finally {
+      setExportEnCours(false);
+    }
+  }
+
   return (
     <Card className="overflow-hidden p-0">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-        <p className="text-xs text-slate-500">
-          {recettes?.length ?? 0} écriture(s) enregistrée(s)
-        </p>
-        <button
-          onClick={exporter}
-          disabled={!recettes || recettes.length === 0}
-          className="flex items-center gap-1.5 text-xs font-medium text-brand-700 underline disabled:opacity-40"
-        >
-          <FileDown className="h-3.5 w-3.5" />
-          Exporter en PDF
-        </button>
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Rechercher par libellé..."
+            value={rechercheLibelle}
+            onChange={(e) => setRechercheLibelle(e.target.value)}
+            className="sm:max-w-[220px]"
+          />
+          <input
+            type="date"
+            value={rechercheDate}
+            onChange={(e) => setRechercheDate(e.target.value)}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          {(rechercheLibelle || rechercheDate) && (
+            <button
+              onClick={() => {
+                setRechercheLibelle('');
+                setRechercheDate('');
+              }}
+              className="text-xs text-slate-400 underline"
+            >
+              Réinitialiser
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <p className="whitespace-nowrap text-xs text-slate-500">
+            {recettesFiltrees.length} écriture(s)
+          </p>
+          <button
+            onClick={ouvrirApercu}
+            disabled={recettesFiltrees.length === 0}
+            className="flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-brand-700 underline disabled:opacity-40"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Exporter en PDF
+          </button>
+        </div>
       </div>
       {isLoading ? (
         <p className="p-6 text-sm text-slate-500">Chargement...</p>
-      ) : !recettes || recettes.length === 0 ? (
-        <p className="p-6 text-sm text-slate-500">Aucune recette enregistrée.</p>
+      ) : recettesFiltrees.length === 0 ? (
+        <p className="p-6 text-sm text-slate-500">
+          {recettes && recettes.length > 0
+            ? 'Aucune recette ne correspond à cette recherche.'
+            : 'Aucune recette enregistrée.'}
+        </p>
       ) : (
         <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
@@ -381,7 +457,7 @@ function RecettesTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {recettes.map((r) => (
+            {recettesFiltrees.map((r) => (
               <tr key={r.id}>
                 <td className="px-5 py-3 font-mono text-xs text-slate-600">{r.numeroBordereau}</td>
                 <td className="px-5 py-3 text-slate-500">{formatDate(r.date)}</td>
@@ -408,11 +484,22 @@ function RecettesTab() {
           </tbody>
         </table></div>
       )}
+
+      <ExportPreviewModal
+        data={apercu}
+        onClose={() => setApercu(null)}
+        onConfirm={confirmerExport}
+        isExporting={exportEnCours}
+      />
     </Card>
   );
 }
 
 function DepensesTab() {
+  const [rechercheLibelle, setRechercheLibelle] = useState('');
+  const [rechercheDate, setRechercheDate] = useState('');
+  const [apercu, setApercu] = useState<(ExportPreviewData & { nomFichier: string }) | null>(null);
+  const [exportEnCours, setExportEnCours] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: depenses, isLoading } = useQuery({
@@ -428,16 +515,24 @@ function DepensesTab() {
     },
   });
 
-  function exporter() {
-    if (!depenses || depenses.length === 0) return;
-    const total = depenses
+  const depensesFiltrees = (depenses ?? []).filter((d) => {
+    const correspondLibelle = rechercheLibelle
+      ? d.libelle.toLowerCase().includes(rechercheLibelle.toLowerCase())
+      : true;
+    const correspondDate = rechercheDate ? d.date.slice(0, 10) === rechercheDate : true;
+    return correspondLibelle && correspondDate;
+  });
+
+  function ouvrirApercu() {
+    if (depensesFiltrees.length === 0) return;
+    const total = depensesFiltrees
       .filter((d) => d.statut === 'VALIDE')
       .reduce((s, d) => s + Number(d.montant), 0);
-    exporterPdf({
+    setApercu({
       titre: 'EP704 — Registre des dépenses',
-      sousTitre: `${depenses.length} écriture(s) — export du ${formatDate(new Date().toISOString())}`,
+      sousTitre: `${depensesFiltrees.length} écriture(s) — export du ${formatDate(new Date().toISOString())}`,
       colonnes: ['N° opération', 'Date', 'Libellé', 'Débit/Crédit', 'Montant', 'Statut'],
-      lignes: depenses.map((d) => [
+      lignes: depensesFiltrees.map((d) => [
         d.numeroOperation,
         formatDate(d.date),
         d.libelle,
@@ -450,27 +545,69 @@ function DepensesTab() {
     });
   }
 
+  async function confirmerExport() {
+    if (!apercu) return;
+    setExportEnCours(true);
+    try {
+      await exporterPdf(apercu);
+      setApercu(null);
+    } finally {
+      setExportEnCours(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       
       <Card className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <p className="text-xs text-slate-500">
-            {depenses?.length ?? 0} écriture(s) enregistrée(s)
-          </p>
-          <button
-            onClick={exporter}
-            disabled={!depenses || depenses.length === 0}
-            className="flex items-center gap-1.5 text-xs font-medium text-brand-700 underline disabled:opacity-40"
-          >
-            <FileDown className="h-3.5 w-3.5" />
-            Exporter en PDF
-          </button>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              placeholder="Rechercher par libellé..."
+              value={rechercheLibelle}
+              onChange={(e) => setRechercheLibelle(e.target.value)}
+              className="sm:max-w-[220px]"
+            />
+            <input
+              type="date"
+              value={rechercheDate}
+              onChange={(e) => setRechercheDate(e.target.value)}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            {(rechercheLibelle || rechercheDate) && (
+              <button
+                onClick={() => {
+                  setRechercheLibelle('');
+                  setRechercheDate('');
+                }}
+                className="text-xs text-slate-400 underline"
+              >
+                Réinitialiser
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <p className="whitespace-nowrap text-xs text-slate-500">
+              {depensesFiltrees.length} écriture(s)
+            </p>
+            <button
+              onClick={ouvrirApercu}
+              disabled={depensesFiltrees.length === 0}
+              className="flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-brand-700 underline disabled:opacity-40"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              Exporter en PDF
+            </button>
+          </div>
         </div>
         {isLoading ? (
           <p className="p-6 text-sm text-slate-500">Chargement...</p>
-        ) : !depenses || depenses.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">Aucune dépense enregistrée.</p>
+        ) : depensesFiltrees.length === 0 ? (
+          <p className="p-6 text-sm text-slate-500">
+            {depenses && depenses.length > 0
+              ? 'Aucune dépense ne correspond à cette recherche.'
+              : 'Aucune dépense enregistrée.'}
+          </p>
         ) : (
           <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
@@ -484,7 +621,7 @@ function DepensesTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {depenses.map((d) => (
+              {depensesFiltrees.map((d) => (
                 <tr key={d.id}>
                   <td className="px-5 py-3 font-mono text-xs text-slate-600">{d.numeroOperation}</td>
                   <td className="px-5 py-3 text-slate-500">{formatDate(d.date)}</td>
@@ -509,6 +646,13 @@ function DepensesTab() {
           </table></div>
         )}
       </Card>
+
+      <ExportPreviewModal
+        data={apercu}
+        onClose={() => setApercu(null)}
+        onConfirm={confirmerExport}
+        isExporting={exportEnCours}
+      />
     </div>
   );
 }
