@@ -1,30 +1,21 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { Printer, Ban } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
 import { Button } from '../../shared/components/ui/Button';
-import { fetchPaiement, annulerPaiement } from './api/paymentsApi';
+import { fetchPaiement } from './api/paymentsApi';
 import { formatDate, formatDateHeure, formatMontant } from '../../shared/lib/format';
 import { montantEnLettres } from '../../shared/lib/montantEnLettres';
 
 export function PaymentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const queryClient = useQueryClient();
 
   const { data: paiement, isLoading } = useQuery({
     queryKey: ['paiement', id],
     queryFn: () => fetchPaiement(id!),
     enabled: !!id,
-  });
-
-  const annulerMutation = useMutation({
-    mutationFn: () => annulerPaiement(id!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paiement', id] });
-      queryClient.invalidateQueries({ queryKey: ['paiements'] });
-    },
   });
 
   if (isLoading) return <p className="text-sm text-slate-500">Chargement...</p>;

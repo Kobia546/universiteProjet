@@ -1,5 +1,10 @@
-export function formatMontant(montant: number | string): string {
-  const valeur = typeof montant === 'string' ? parseFloat(montant) : montant;
+export function formatMontant(montant: number | string | null | undefined): string {
+  const valeur =
+    montant === null || montant === undefined
+      ? 0
+      : typeof montant === 'string'
+        ? parseFloat(montant)
+        : montant;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'XOF',

@@ -17,7 +17,7 @@ export function KpiCard({
         <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
         <Icon className="h-4 w-4 text-brand-500" />
       </div>
-      <p className="tabular-nums font-serif text-[28px] font-semibold leading-none text-slate-900">
+      <p className="tabular-nums font-serif text-[20px] font-semibold leading-tight text-slate-900 sm:text-[22px]">
         {value}
       </p>
       <div className="mt-3 h-px w-8 border-t border-dashed border-brand-300" />
