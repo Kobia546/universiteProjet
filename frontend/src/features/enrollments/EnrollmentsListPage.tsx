@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Wallet } from 'lucide-react';
+import { Plus, Search, Wallet } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
@@ -20,6 +20,7 @@ const VARIANTE_STATUT: Record<string, 'success' | 'danger' | 'info' | 'default'>
 export function EnrollmentsListPage() {
   const navigate = useNavigate();
   const [anneeFiltre, setAnneeFiltre] = useState<string>('');
+  const [recherche, setRecherche] = useState('');
 
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
@@ -39,6 +40,27 @@ export function EnrollmentsListPage() {
     queryFn: () => fetchInscriptions(anneeFiltre ? { anneeUniversitaireId: anneeFiltre } : {}),
     enabled: !!anneeFiltre || annees?.length === 0,
   });
+
+  const inscriptionsFiltres = useMemo(() => {
+    const terme = recherche.trim().toLowerCase();
+    if (!terme) return inscriptions ?? [];
+
+    return (inscriptions ?? []).filter((inscription) => {
+      const texte = [
+        inscription.numeroInscription,
+        inscription.etudiant.prenom,
+        inscription.etudiant.nom,
+        inscription.filiere.libelle,
+        inscription.anneeUniversitaire.libelle,
+        inscription.statut,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return texte.includes(terme);
+    });
+  }, [inscriptions, recherche]);
 
   return (
     <div>
@@ -67,6 +89,16 @@ export function EnrollmentsListPage() {
         }
       />
 
+      <div className="mb-4 relative max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Rechercher inscription, étudiant, filière..."
+          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+      </div>
+
       <p className="mb-4 text-xs text-slate-500">
         À utiliser pour une personne déjà connue dans l'app (ex : réinscription l'année suivante).
         Pour une toute nouvelle personne, utilise plutôt "Nouvel universitaire" depuis le
@@ -86,14 +118,16 @@ export function EnrollmentsListPage() {
                 <th className="px-5 py-3">Étudiant</th>
                 <th className="px-5 py-3">Filière</th>
                 <th className="px-5 py-3">Année</th>
-                <th className="px-5 py-3 text-right">Montant dû</th>
+                <th className="px-5 py-3 text-right">Scolarité</th>
+                <th className="px-5 py-3 ">Montant Payé</th>
+                
                 <th className="px-5 py-3">Solde</th>
                 <th className="px-5 py-3">Statut</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {inscriptions.map((inscription) => (
+              {inscriptionsFiltres.map((inscription) => (
                 <tr
                   key={inscription.id}
                   onClick={() => navigate(`/inscriptions/${inscription.id}`)}
@@ -110,6 +144,10 @@ export function EnrollmentsListPage() {
                   <td className="px-5 py-3 text-right font-medium">
                     {formatMontant(inscription.montantTotalDu)}
                   </td>
+                  <td className="px-5 py-3">
+                    {formatMontant(inscription.totalPaye)}
+                  </td>
+                 
                   <td className="px-5 py-3">
                     {(inscription.resteAPayer ?? 0) <= 0 ? (
                       <Badge variant="success">Soldé</Badge>

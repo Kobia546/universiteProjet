@@ -34,8 +34,7 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-3 flex items-center justify-center gap-3">
-            <img src="/logos/universite.png" alt="Université Félix Houphouët-Boigny" className="h-14 w-14 object-contain" />
-            <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-14 w-14 object-contain" />
+              <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-20 w-20 object-contain" />
           </div>
           <p className="font-serif text-sm font-semibold tracking-wide text-slate-700">SYFIC - SJAP</p>
           <h1 className="mt-2 font-serif text-lg font-semibold leading-snug text-slate-900">
@@ -76,9 +75,9 @@ export function LoginPage() {
             Remplacez /logos/proprietaire.png par votre logo (même dossier public/logos). */}
         <div className="mt-6 flex items-center justify-center">
           <img
-            src="/logos/proprietaire.png"
+            src="/logos/universite.png"
             alt="Logo propriétaire"
-            className="h-9 max-w-[160px] object-contain opacity-90"
+            className="h-20 max-w-[250px] object-contain opacity-90"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = 'none';
             }}

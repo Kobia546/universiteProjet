@@ -62,24 +62,7 @@ export function PaymentDetailPage() {
               <Printer className="h-4 w-4" />
               Imprimer
             </Button>
-            {paiement.statut === 'VALIDE' && (
-              <Button
-                variant="danger"
-                isLoading={annulerMutation.isPending}
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Confirmer l'annulation de ce paiement ? Cette action est tracée et ne peut pas être défaite depuis l'interface.",
-                    )
-                  ) {
-                    annulerMutation.mutate();
-                  }
-                }}
-              >
-                <Ban className="h-4 w-4" />
-                Annuler le paiement
-              </Button>
-            )}
+         
           </div>
         }
       />
@@ -101,7 +84,7 @@ export function PaymentDetailPage() {
               className="h-14 w-14 shrink-0 object-contain"
             />
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-900">
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-900" >
                 Filières Professionnalisées UFR SJAP
               </p>
               <p className="text-xs text-slate-500">BP V179</p>
@@ -116,7 +99,7 @@ export function PaymentDetailPage() {
         </div>
 
         <p className="mb-1 text-xs font-medium text-slate-900">
-          Reçu N° {numeroRecuApp}
+           {numeroRecuApp}
         </p>
 
         <div className="mb-2 flex items-center justify-between">

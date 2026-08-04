@@ -113,15 +113,21 @@ export function EnrollmentDetailPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
         <Card>
-          <p className="text-sm text-slate-500">Montant total dû</p>
+          <p className="text-sm text-slate-500">Scolarité</p>
           <p className="tabular-nums mt-1 font-serif text-xl font-semibold text-slate-900">
             {formatMontant(inscription.montantTotalDu)}
           </p>
         </Card>
         <Card>
-          <p className="text-sm text-slate-500">Statut</p>
-          <p className="mt-1">
-            <Badge variant="info">{inscription.statut}</Badge>
+          <p className="text-sm text-slate-500">Montant payé</p>
+          <p className="tabular-nums mt-1 font-serif text-xl font-semibold text-slate-900">
+            {formatMontant(totalPaye)}
+          </p>
+        </Card>
+        <Card>
+          <p className="text-sm text-slate-500">Solde</p>
+         <p className="tabular-nums mt-1 font-serif text-xl font-semibold text-slate-900">
+            {formatMontant(resteAPayer)}
           </p>
         </Card>
         <Card>
@@ -168,7 +174,7 @@ export function EnrollmentDetailPage() {
           )}
        
         </Card>
-        {inscription.createdAt && (
+        {/* {inscription.createdAt && (
           <Card>
             <p className="text-sm text-slate-500">Saisi le</p>
             <p className="tabular-nums mt-1 font-serif text-xl font-semibold text-slate-900">
@@ -176,7 +182,7 @@ export function EnrollmentDetailPage() {
             </p>
         
           </Card>
-        )}
+        )} */}
 
         <Card className="col-span-1 sm:col-span-2 lg:col-span-4">
           <div className="mb-4 flex items-center justify-between">

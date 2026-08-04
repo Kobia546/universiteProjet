@@ -42,9 +42,10 @@ export function AccountingPage() {
       <div className="mb-6 flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
         {(
           [
-            { key: 'centralisateur', label: 'EP706 — Centralisateur' },
+            
             { key: 'recettes', label: 'EP703 — Recettes' },
             { key: 'depenses', label: 'EP704 — Dépenses' },
+            { key: 'centralisateur', label: 'EP706 — Centralisateur' },
           ] as const
         ).map((tab) => (
           <button

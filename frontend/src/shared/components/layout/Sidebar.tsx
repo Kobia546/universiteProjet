@@ -8,12 +8,12 @@ export function Sidebar() {
         <img
           src="/logos/universite.png"
           alt="Université Félix Houphouët-Boigny"
-          className="h-8 w-8 shrink-0 object-contain"
+          className="h-20 w-20 shrink-0 object-contain"
         />
 
         <span className="flex items-center justify-center gap-2 text-center font-serif text-[14px] font-semibold leading-tight text-slate-900">
           <span className="whitespace-nowrap">SYFIC - SJAP</span>
-          <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-8 w-8 shrink-0 object-contain" />
+          <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-12 w-12 shrink-0 object-contain" />
         </span>
       </div>
       
