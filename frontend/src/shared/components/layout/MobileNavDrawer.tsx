@@ -28,18 +28,21 @@ export function MobileNavDrawer({
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5">
-          <div className="flex items-center gap-2">
-            <img src="/logos/universite.png" alt="Université Félix Houphouët-Boigny" className="h-8 w-8 object-contain" />
-            
-            <span className="font-serif text-[10px] font-semibold text-slate-900">
-              SYFIC - SJAP
-              <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-8 w-8 object-contain" />
+        <div className="flex h-16 items-center justify-between gap-2 border-b border-slate-100 px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <img
+              src="/logos/universite.png"
+              alt="Université Félix Houphouët-Boigny"
+              className="h-8 w-8 shrink-0 object-contain"
+            />
+            <span className="flex min-w-0 items-center gap-1.5 font-serif text-[10px] font-semibold leading-tight text-slate-900">
+              <span className="whitespace-nowrap">SYFIC - SJAP</span>
+              <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-6 w-6 shrink-0 object-contain" />
             </span>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             aria-label="Fermer le menu"
           >
             <X className="h-5 w-5" />

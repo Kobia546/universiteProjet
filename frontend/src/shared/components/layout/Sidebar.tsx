@@ -4,7 +4,7 @@ import { navItems } from './navItems';
 export function Sidebar() {
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
-      <div className="flex h-16 items-center justify-center gap-3 border-b border-slate-100 px-3">
+      <div className="flex h-24 items-center justify-center gap-3 border-b border-slate-100 px-3">
         <img
           src="/logos/universite.png"
           alt="Université Félix Houphouët-Boigny"
