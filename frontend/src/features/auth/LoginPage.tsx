@@ -30,17 +30,14 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4" style={{ backgroundColor: '#faf8f4' }}>
+    <div className="flex min-h-screen items-center justify-center px-4" style={{ backgroundColor: '#f5ffff' }}>
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-3 flex items-center justify-center gap-3">
-              <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-20 w-20 object-contain" />
+              <img src="/logos/ufr-sjap.jpg" alt="UFR SJAP" className="h-[120px] w-[120px] object-contain" />
           </div>
-          <p className="font-serif text-sm font-semibold tracking-wide text-slate-700">SYFIC - SJAP</p>
           <h1 className="mt-2 font-serif text-lg font-semibold leading-snug text-slate-900">
             SYSTEME DE GESTION DES FICHES COMPTABLES
-            <br />
-            UFR-SJAP
           </h1>
           <div className="mx-auto my-2 h-px w-10 border-t border-dashed border-brand-300" />
           <p className="text-sm text-slate-500">Espace comptabilité</p>
@@ -77,7 +74,7 @@ export function LoginPage() {
           <img
             src="/logos/universite.png"
             alt="Logo propriétaire"
-            className="h-20 max-w-[250px] object-contain opacity-90"
+            className="h-[120px] max-w-[250px] object-contain opacity-90"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = 'none';
             }}

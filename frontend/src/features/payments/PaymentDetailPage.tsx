@@ -81,7 +81,7 @@ export function PaymentDetailPage() {
             <p className="text-xs text-slate-500">Cel. : 01 41 03 17 24 / 01 40 83 56 52</p>
           </div>
           <img
-            src="/logos/ufr-sjap.png"
+            src="/logos/ufr-sjap.jpg"
             alt="UFR SJAP"
             className="h-14 w-14 shrink-0 object-contain"
           />

@@ -16,6 +16,7 @@ import { AccountingPage } from './features/accounting/AccountingPage';
 import { ConsultationsPage } from './features/consultations/ConsultationsPage';
 import { EditionsPage } from './features/editions/EditionsPage';
 import { SettingsPage } from './features/payment-rules/SettingsPage';
+import { AidePage } from './features/aide/AidePage';
 
 export function App() {
   return (
@@ -45,6 +46,7 @@ export function App() {
           <Route path="consultations" element={<ConsultationsPage />} />
           <Route path="editions" element={<EditionsPage />} />
           <Route path="parametres" element={<SettingsPage />} />
+          <Route path="aide" element={<AidePage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

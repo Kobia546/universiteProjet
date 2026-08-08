@@ -12,7 +12,7 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-teal-50 px-4 sm:px-6">
       <button
         onClick={onOpenMenu}
         className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 md:hidden"

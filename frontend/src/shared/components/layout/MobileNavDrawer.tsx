@@ -28,7 +28,7 @@ export function MobileNavDrawer({
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-slate-100 px-4">
+        <div className="flex h-16 items-center justify-between gap-2 border-b border-slate-100 bg-teal-50 px-4">
           <div className="flex min-w-0 items-center gap-2">
             <img
               src="/logos/universite.png"
@@ -37,7 +37,7 @@ export function MobileNavDrawer({
             />
             <span className="flex min-w-0 items-center gap-1.5 font-serif text-[10px] font-semibold leading-tight text-slate-900">
               <span className="whitespace-nowrap">SYFIC - SJAP</span>
-              <img src="/logos/ufr-sjap.png" alt="UFR SJAP" className="h-6 w-6 shrink-0 object-contain" />
+              <img src="/logos/ufr-sjap.jpg" alt="UFR SJAP" className="h-6 w-6 shrink-0 object-contain" />
             </span>
           </div>
           <button
@@ -48,7 +48,7 @@ export function MobileNavDrawer({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto bg-teal-50 p-3">
           {navItems.map(({ to, label, icon: Icon, end, accentActifClassName, accentSurvolClassName }) => (
             <NavLink
               key={to}
@@ -69,7 +69,7 @@ export function MobileNavDrawer({
 
         {/* Zone réservée à la marque du propriétaire/développeur.
             Remplacez /logos/proprietaire.png par votre logo (même dossier public/logos). */}
-        <div className="border-t border-slate-100 p-3">
+        <div className="border-t border-slate-100 bg-teal-50 p-3">
           <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-200 px-3 py-2">
             <img
               src="/logos/proprietaire.png"

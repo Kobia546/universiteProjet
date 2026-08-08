@@ -8,7 +8,7 @@ export function AppLayout() {
   const [menuOuvert, setMenuOuvert] = useState(false);
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-teal-50">
       <Sidebar />
       <MobileNavDrawer isOpen={menuOuvert} onClose={() => setMenuOuvert(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">

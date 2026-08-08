@@ -36,7 +36,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Paramètres" description="Configuration académique et financière" />
+      <PageHeader title="Administration" description="Configuration académique et financière" />
 
       <div className="mb-6 flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
         {(
