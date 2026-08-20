@@ -6,6 +6,16 @@ import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
 import { Input } from '../../shared/components/ui/Input';
 import { Badge } from '../../shared/components/ui/Badge';
+import { moduleLabels, type ModuleCode } from '../../shared/components/layout/navItems';
+import { useAuthStore } from '../auth/authStore';
+import {
+  fetchProfils,
+  createProfil,
+  updateProfil,
+  deleteProfil,
+  type Profil,
+} from '../users/api/profilsApi';
+import { fetchUsers, createUser, updateUser, setUserActif } from '../users/api/usersApi';
 import {
   fetchFilieres,
   ouvrirFiliere,
@@ -29,7 +39,7 @@ import {
 import { fetchCarnetsRecu, createCarnetRecu, fermerCarnetRecu } from './api/carnetRecuApi';
 import { formatDate, formatMontant } from '../../shared/lib/format';
 
-type Onglet = 'filieres' | 'matieres' | 'annees' | 'regles' | 'carnets';
+type Onglet = 'filieres' | 'matieres' | 'annees' | 'regles' | 'carnets' | 'utilisateurs' | 'profils';
 
 export function SettingsPage() {
   const [onglet, setOnglet] = useState<Onglet>('filieres');
@@ -46,6 +56,8 @@ export function SettingsPage() {
             { key: 'annees', label: 'Années universitaires' },
             { key: 'regles', label: 'Règles de paiement' },
             { key: 'carnets', label: 'Carnets de reçu' },
+            { key: 'utilisateurs', label: 'Utilisateurs' },
+            { key: 'profils', label: 'Profils' },
           ] as const
         ).map((tab) => (
           <button
@@ -67,6 +79,8 @@ export function SettingsPage() {
       {onglet === 'annees' && <AnneesTab />}
       {onglet === 'regles' && <ReglesTab />}
       {onglet === 'carnets' && <CarnetsRecuTab />}
+      {onglet === 'utilisateurs' && <UtilisateursTab />}
+      {onglet === 'profils' && <ProfilsTab />}
     </div>
   );
 }
@@ -754,6 +768,346 @@ function CarnetsRecuTab() {
                           Fermer
                         </button>
                       )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function ProfilsTab() {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [nom, setNom] = useState('');
+  const [description, setDescription] = useState('');
+  const [modules, setModules] = useState<ModuleCode[]>([]);
+  const queryClient = useQueryClient();
+
+  const { data: profils, isLoading } = useQuery({ queryKey: ['profils'], queryFn: fetchProfils });
+
+  function reinitialiserFormulaire() {
+    setEditingId(null);
+    setNom('');
+    setDescription('');
+    setModules([]);
+  }
+
+  function commencerEdition(profil: Profil) {
+    setEditingId(profil.id);
+    setNom(profil.nom);
+    setDescription(profil.description ?? '');
+    setModules(profil.modules);
+  }
+
+  function toggleModule(code: ModuleCode) {
+    setModules((m) => (m.includes(code) ? m.filter((x) => x !== code) : [...m, code]));
+  }
+
+  const creerMutation = useMutation({
+    mutationFn: createProfil,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profils'] });
+      reinitialiserFormulaire();
+    },
+  });
+
+  const modifierMutation = useMutation({
+    mutationFn: (input: Parameters<typeof updateProfil>[1]) => updateProfil(editingId!, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profils'] });
+      reinitialiserFormulaire();
+    },
+  });
+
+  const supprimerMutation = useMutation({
+    mutationFn: deleteProfil,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profils'] }),
+  });
+
+  const enEdition = !!editingId;
+  const erreur = creerMutation.error || modifierMutation.error || supprimerMutation.error;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="font-serif text-[15px] font-semibold text-slate-900">
+            {enEdition ? 'Modifier le profil' : 'Nouveau profil'}
+          </h2>
+          {enEdition && (
+            <button onClick={reinitialiserFormulaire} className="text-xs text-slate-500 underline">
+              Annuler la modification
+            </button>
+          )}
+        </div>
+        <p className="mb-4 text-xs text-slate-500">
+          Un profil définit ce qu'un utilisateur peut voir dans l'application — cochez uniquement
+          les rubriques auxquelles il doit avoir accès.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input label="Nom du profil" value={nom} onChange={(e) => setNom(e.target.value)} />
+          <Input
+            label="Description (optionnel)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="mt-4">
+          <p className="mb-2 text-sm font-medium text-slate-700">Modules visibles</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {moduleLabels.map(({ code, label }) => (
+              <label
+                key={code}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={modules.includes(code)}
+                  onChange={() => toggleModule(code)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
+        {erreur && (
+          <p className="mt-3 text-sm text-red-600">
+            {(erreur as any)?.response?.data?.message || 'Une erreur est survenue.'}
+          </p>
+        )}
+        <div className="mt-4 flex justify-end gap-3">
+          {enEdition ? (
+            <Button
+              disabled={!nom || modules.length === 0}
+              isLoading={modifierMutation.isPending}
+              onClick={() =>
+                modifierMutation.mutate({ nom, description: description || undefined, modules })
+              }
+            >
+              Enregistrer les modifications
+            </Button>
+          ) : (
+            <Button
+              disabled={!nom || modules.length === 0}
+              isLoading={creerMutation.isPending}
+              onClick={() =>
+                creerMutation.mutate({ nom, description: description || undefined, modules })
+              }
+            >
+              <Plus className="h-4 w-4" />
+              Créer le profil
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      {isLoading ? (
+        <p className="text-sm text-slate-500">Chargement...</p>
+      ) : (
+        <div className="space-y-3">
+          {profils?.map((profil) => (
+            <Card key={profil.id} className={editingId === profil.id ? 'bg-brand-50/50' : ''}>
+              <div className="mb-2 flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{profil.nom}</p>
+                    {profil.systeme && <Badge variant="default">Système</Badge>}
+                  </div>
+                  {profil.description && (
+                    <p className="text-xs text-slate-500">{profil.description}</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-400">
+                    {profil._count?.users ?? 0} utilisateur(s)
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => commencerEdition(profil)}
+                    className="text-xs text-brand-700 underline"
+                  >
+                    Modifier
+                  </button>
+                  {!profil.systeme && (
+                    <button
+                      onClick={() => supprimerMutation.mutate(profil.id)}
+                      className="text-xs text-red-600 underline"
+                    >
+                      Supprimer
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {profil.modules.map((code) => (
+                  <span
+                    key={code}
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
+                  >
+                    {moduleLabels.find((m) => m.code === code)?.label ?? code}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UtilisateursTab() {
+  const [nom, setNom] = useState('');
+  const [prenom, setPrenom] = useState('');
+  const [email, setEmail] = useState('');
+  const [motDePasse, setMotDePasse] = useState('');
+  const [profilId, setProfilId] = useState('');
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const queryClient = useQueryClient();
+
+  const { data: utilisateurs, isLoading } = useQuery({ queryKey: ['users'], queryFn: fetchUsers });
+  const { data: profils } = useQuery({ queryKey: ['profils'], queryFn: fetchProfils });
+
+  function reinitialiserFormulaire() {
+    setNom('');
+    setPrenom('');
+    setEmail('');
+    setMotDePasse('');
+    setProfilId('');
+  }
+
+  const creerMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      reinitialiserFormulaire();
+    },
+  });
+
+  const changerProfilMutation = useMutation({
+    mutationFn: (input: { id: string; profilId: string }) =>
+      updateUser(input.id, { profilId: input.profilId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+
+  const activerMutation = useMutation({
+    mutationFn: (input: { id: string; actif: boolean }) => setUserActif(input.id, input.actif),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <h2 className="mb-1 font-serif text-[15px] font-semibold text-slate-900">
+          Nouvel utilisateur
+        </h2>
+        <p className="mb-4 text-xs text-slate-500">
+          Le profil choisi détermine ce que cet utilisateur pourra voir dans l'application.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+          <Input label="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            label="Mot de passe"
+            type="password"
+            value={motDePasse}
+            onChange={(e) => setMotDePasse(e.target.value)}
+          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Profil</label>
+            <select
+              value={profilId}
+              onChange={(e) => setProfilId(e.target.value)}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="">Sélectionner un profil...</option>
+              {profils?.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {creerMutation.isError && (
+          <p className="mt-3 text-sm text-red-600">
+            {(creerMutation.error as any)?.response?.data?.message || 'Une erreur est survenue.'}
+          </p>
+        )}
+        <div className="mt-4 flex justify-end">
+          <Button
+            disabled={!nom || !prenom || !email || motDePasse.length < 8 || !profilId}
+            isLoading={creerMutation.isPending}
+            onClick={() => creerMutation.mutate({ nom, prenom, email, motDePasse, profilId })}
+          >
+            <Plus className="h-4 w-4" />
+            Créer l'utilisateur
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden p-0">
+        {isLoading ? (
+          <p className="p-6 text-sm text-slate-500">Chargement...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Nom</th>
+                  <th className="px-5 py-3">Email</th>
+                  <th className="px-5 py-3">Profil</th>
+                  <th className="px-5 py-3">Statut</th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {utilisateurs?.map((u) => (
+                  <tr key={u.id}>
+                    <td className="px-5 py-3 font-medium text-slate-900">
+                      {u.prenom} {u.nom}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">{u.email}</td>
+                    <td className="px-5 py-3">
+                      <select
+                        value={u.profil.id}
+                        onChange={(e) =>
+                          changerProfilMutation.mutate({ id: u.id, profilId: e.target.value })
+                        }
+                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      >
+                        {profils?.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-5 py-3">
+                      {u.actif ? (
+                        <Badge variant="success">Actif</Badge>
+                      ) : (
+                        <Badge variant="default">Inactif</Badge>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <button
+                        disabled={u.id === currentUserId}
+                        onClick={() => activerMutation.mutate({ id: u.id, actif: !u.actif })}
+                        className="text-xs text-brand-700 underline disabled:cursor-not-allowed disabled:text-slate-300 disabled:no-underline"
+                      >
+                        {u.actif ? 'Désactiver' : 'Activer'}
+                      </button>
                     </td>
                   </tr>
                 ))}

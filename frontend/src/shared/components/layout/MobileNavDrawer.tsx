@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { navItems } from './navItems';
+import { getVisibleNavItems } from './navItems';
+import { useAuthStore } from '../../../features/auth/authStore';
 
 export function MobileNavDrawer({
   isOpen,
@@ -9,6 +10,9 @@ export function MobileNavDrawer({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const modules = useAuthStore((s) => s.user?.modules);
+  const visibleNavItems = getVisibleNavItems(modules);
+
   return (
     <div
       className={`fixed inset-0 z-50 md:hidden ${isOpen ? '' : 'pointer-events-none'}`}
@@ -49,7 +53,7 @@ export function MobileNavDrawer({
           </button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto bg-teal-50 p-3">
-          {navItems.map(({ to, label, icon: Icon, end, accentActifClassName, accentSurvolClassName }) => (
+          {visibleNavItems.map(({ to, label, icon: Icon, end, accentActifClassName, accentSurvolClassName }) => (
             <NavLink
               key={to}
               to={to}

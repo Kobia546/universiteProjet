@@ -5,7 +5,8 @@ export interface AuthUser {
   nom: string;
   prenom: string;
   email: string;
-  role: string;
+  profil: { id: string; nom: string };
+  modules: string[];
 }
 
 interface AuthState {

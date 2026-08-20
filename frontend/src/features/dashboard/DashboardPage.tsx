@@ -19,6 +19,7 @@ import { KpiCard } from './components/KpiCard';
 import { fetchDashboardStats } from './api/dashboardApi';
 import { fetchAnneesUniversitaires } from '../programs/programsApi';
 import { formatDate, formatMontant } from '../../shared/lib/format';
+import { useAuthStore } from '../auth/authStore';
 
 const COULEURS = ['#2b6249', '#4472c4', '#8cbfa7', '#7f9fd6', '#1a3d2e', '#a8c8b8'];
 
@@ -35,6 +36,10 @@ function libelleMoisAffiche(moisAffiche?: string): string {
 
 export function DashboardPage() {
   const [anneeSelectionnee, setAnneeSelectionnee] = useState<string>('');
+  // Les chiffres financiers agrégés (recettes/dépenses) sont réservés au profil
+  // Administrateur — les autres profils voient les KPI d'activité mais pas l'argent.
+  const modules = useAuthStore((s) => s.user?.modules);
+  const voitLesFinances = !!modules?.includes('ADMINISTRATION');
 
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
@@ -79,7 +84,7 @@ export function DashboardPage() {
         <p className="text-sm text-slate-500">Chargement...</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className={`grid grid-cols-2 gap-4 ${voitLesFinances ? 'lg:grid-cols-4' : ''}`}>
             <KpiCard
               label={`Universitaires ${libelleAnnee}`}
               value={String(stats.totalUniversitaires)}
@@ -90,16 +95,20 @@ export function DashboardPage() {
               value={String(stats.nouveauxInscrits)}
               icon={GraduationCap}
             />
-            <KpiCard
-              label={`Recettes ${libelleMois}`}
-              value={formatMontant(stats.revenusDuMois)}
-              icon={TrendingUp}
-            />
-            <KpiCard
-              label={`Dépenses ${libelleMois}`}
-              value={formatMontant(stats.depensesDuMois)}
-              icon={TrendingDown}
-            />
+            {voitLesFinances && (
+              <>
+                <KpiCard
+                  label={`Recettes ${libelleMois}`}
+                  value={formatMontant(stats.revenusDuMois)}
+                  icon={TrendingUp}
+                />
+                <KpiCard
+                  label={`Dépenses ${libelleMois}`}
+                  value={formatMontant(stats.depensesDuMois)}
+                  icon={TrendingDown}
+                />
+              </>
+            )}
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -127,25 +136,29 @@ export function DashboardPage() {
             </Card>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
-            <Card className="col-span-1 lg:col-span-2">
-              <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                Recettes et dépenses — 6 derniers mois
-              </h2>
-              <div className="rule-perforee mb-4 mt-2" />
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.evolution6Mois}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 11 }} width={70} tickFormatter={(v) => formatMontant(v)} />
-                    <RechartsTooltip formatter={(v: any) => formatMontant(Number(v))} />
-                    <Bar dataKey="recettes" name="Recettes" fill="#2b6249" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="depenses" name="Dépenses" fill="#c4746a" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+          <div
+            className={`mt-6 grid grid-cols-1 gap-4 lg:gap-6 ${voitLesFinances ? 'lg:grid-cols-3' : ''}`}
+          >
+            {voitLesFinances && (
+              <Card className="col-span-1 lg:col-span-2">
+                <h2 className="font-serif text-[15px] font-semibold text-slate-900">
+                  Recettes et dépenses — 6 derniers mois
+                </h2>
+                <div className="rule-perforee mb-4 mt-2" />
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.evolution6Mois}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 11 }} width={70} tickFormatter={(v) => formatMontant(v)} />
+                      <RechartsTooltip formatter={(v: any) => formatMontant(Number(v))} />
+                      <Bar dataKey="recettes" name="Recettes" fill="#2b6249" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="depenses" name="Dépenses" fill="#c4746a" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            )}
 
             <Card>
               <h2 className="font-serif text-[15px] font-semibold text-slate-900">
@@ -192,39 +205,43 @@ export function DashboardPage() {
             </Card>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
-            <Card className="col-span-1 lg:col-span-2">
-              <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                Les 5 Dernières opérations{libelleAnnee ? ` ${libelleAnnee}` : ''}
-              </h2>
-              <div className="rule-perforee mb-4 mt-2" />
-              {dernieresOperationsAffichees.length === 0 ? (
-                <p className="text-sm text-slate-500">Aucune opération pour le moment.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[420px] text-sm">
-                    <tbody className="divide-y divide-slate-100">
-                      {dernieresOperationsAffichees.map((op) => (
-                        <tr key={`${op.type}-${op.id}`}>
-                          <td className="py-2.5 text-slate-700">{op.libelle}</td>
-                          <td className="py-2.5 text-right text-xs text-slate-400">
-                            {formatDate(op.date)}
-                          </td>
-                          <td
-                            className={`tabular-nums py-2.5 text-right font-mono font-medium ${
-                              op.type === 'depense' ? 'text-red-600' : 'text-brand-700'
-                            }`}
-                          >
-                            {op.type === 'depense' ? '-' : '+'}
-                            {formatMontant(op.montant)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
+          <div
+            className={`mt-6 grid grid-cols-1 gap-4 lg:gap-6 ${voitLesFinances ? 'lg:grid-cols-3' : ''}`}
+          >
+            {voitLesFinances && (
+              <Card className="col-span-1 lg:col-span-2">
+                <h2 className="font-serif text-[15px] font-semibold text-slate-900">
+                  Les 5 Dernières opérations{libelleAnnee ? ` ${libelleAnnee}` : ''}
+                </h2>
+                <div className="rule-perforee mb-4 mt-2" />
+                {dernieresOperationsAffichees.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucune opération pour le moment.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[420px] text-sm">
+                      <tbody className="divide-y divide-slate-100">
+                        {dernieresOperationsAffichees.map((op) => (
+                          <tr key={`${op.type}-${op.id}`}>
+                            <td className="py-2.5 text-slate-700">{op.libelle}</td>
+                            <td className="py-2.5 text-right text-xs text-slate-400">
+                              {formatDate(op.date)}
+                            </td>
+                            <td
+                              className={`tabular-nums py-2.5 text-right font-mono font-medium ${
+                                op.type === 'depense' ? 'text-red-600' : 'text-brand-700'
+                              }`}
+                            >
+                              {op.type === 'depense' ? '-' : '+'}
+                              {formatMontant(op.montant)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            )}
 
             <Card>
               <h2 className="font-serif text-[15px] font-semibold text-slate-900">

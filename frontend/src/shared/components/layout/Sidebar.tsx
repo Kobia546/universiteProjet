@@ -1,7 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { navItems } from './navItems';
+import { getVisibleNavItems } from './navItems';
+import { useAuthStore } from '../../../features/auth/authStore';
 
 export function Sidebar() {
+  const modules = useAuthStore((s) => s.user?.modules);
+  const visibleNavItems = getVisibleNavItems(modules);
+
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
       <div className="flex h-24 items-center justify-center gap-3 border-b border-slate-100 bg-teal-50 px-3">
@@ -18,7 +22,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 p-3 pt-2 bg-teal-50">
-        {navItems.map(({ to, label, icon: Icon, end, accentActifClassName, accentSurvolClassName }) => (
+        {visibleNavItems.map(({ to, label, icon: Icon, end, accentActifClassName, accentSurvolClassName }) => (
           <NavLink
             key={to}
             to={to}
