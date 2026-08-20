@@ -28,7 +28,7 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
           <p className="text-sm font-medium text-slate-900">
             {user?.prenom} {user?.nom}
           </p>
-          <p className="text-xs text-slate-500">{user?.profil.nom}</p>
+          <p className="text-xs text-slate-500">{user?.profil?.nom}</p>
         </div>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
           {user?.prenom?.[0]}
