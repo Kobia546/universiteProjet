@@ -1,22 +1,43 @@
-import { PrismaClient, RoleCode } from '@prisma/client';
+import { PrismaClient, ModuleCode } from '@prisma/client';
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
 
+const TOUS_LES_MODULES = Object.values(ModuleCode);
+
 async function main() {
   console.log('Seed en cours...');
 
-  // ---- Rôles ----
-  const roleComptabilite = await prisma.role.upsert({
-    where: { code: RoleCode.COMPTABILITE },
+  // ---- Profils ----
+  const profilAdmin = await prisma.profil.upsert({
+    where: { nom: 'Administrateur' },
     update: {},
-    create: { code: RoleCode.COMPTABILITE, libelle: 'Comptable / Adjoint comptable' },
+    create: {
+      nom: 'Administrateur',
+      description: 'Accès complet à toutes les fonctionnalités, y compris la gestion des comptes.',
+      modules: TOUS_LES_MODULES,
+      systeme: true,
+    },
   });
 
-  await prisma.role.upsert({
-    where: { code: RoleCode.ADMIN },
+  const profilComptabilite = await prisma.profil.upsert({
+    where: { nom: 'Comptabilité' },
     update: {},
-    create: { code: RoleCode.ADMIN, libelle: 'Administrateur système' },
+    create: {
+      nom: 'Comptabilité',
+      description: 'Comptable / adjoint comptable — tout sauf l\'administration des comptes.',
+      modules: TOUS_LES_MODULES.filter((m) => m !== ModuleCode.ADMINISTRATION),
+    },
+  });
+
+  await prisma.profil.upsert({
+    where: { nom: 'Visiteur' },
+    update: {},
+    create: {
+      nom: 'Visiteur',
+      description: 'Accès restreint, à personnaliser selon les besoins.',
+      modules: [ModuleCode.TABLEAU_DE_BORD, ModuleCode.ADMINISTRATION],
+    },
   });
 
   // ---- Filières (= niveaux, référentiel fixe) ----
@@ -131,9 +152,21 @@ async function main() {
     });
   }
 
-  // ---- Comptes utilisateurs : comptable + adjoint (même rôle) ----
+  // ---- Comptes utilisateurs : admin + comptable + adjoint ----
   const motDePasseParDefaut = 'ChangezMoi123!';
   const hash = await argon2.hash(motDePasseParDefaut);
+
+  await prisma.user.upsert({
+    where: { email: 'admin@universite.local' },
+    update: {},
+    create: {
+      nom: 'Admin',
+      prenom: 'Système',
+      email: 'admin@universite.local',
+      motDePasseHash: hash,
+      profilId: profilAdmin.id,
+    },
+  });
 
   await prisma.user.upsert({
     where: { email: 'comptable@universite.local' },
@@ -143,7 +176,7 @@ async function main() {
       prenom: 'Principal',
       email: 'comptable@universite.local',
       motDePasseHash: hash,
-      roleId: roleComptabilite.id,
+      profilId: profilComptabilite.id,
     },
   });
 
@@ -155,14 +188,15 @@ async function main() {
       prenom: 'Comptable',
       email: 'adjoint@universite.local',
       motDePasseHash: hash,
-      roleId: roleComptabilite.id,
+      profilId: profilComptabilite.id,
     },
   });
 
   console.log('Seed terminé.');
   console.log('Comptes créés (mot de passe par défaut : ChangezMoi123!) :');
-  console.log('  - comptable@universite.local');
-  console.log('  - adjoint@universite.local');
+  console.log('  - admin@universite.local (profil Administrateur)');
+  console.log('  - comptable@universite.local (profil Comptabilité)');
+  console.log('  - adjoint@universite.local (profil Comptabilité)');
   console.log('>>> Pensez à changer ces mots de passe avant la mise en production. <<<');
 }
 

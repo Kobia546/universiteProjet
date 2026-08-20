@@ -15,7 +15,7 @@ export class AuthService {
   async validateUser(email: string, motDePasse: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: { role: true },
+      include: { profil: true },
     });
 
     if (!user || !user.actif) {
@@ -36,7 +36,8 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role.code,
+      profilId: user.profil.id,
+      modules: user.profil.modules,
     };
 
     await this.auditService.enregistrer({
@@ -53,7 +54,8 @@ export class AuthService {
         nom: user.nom,
         prenom: user.prenom,
         email: user.email,
-        role: user.role.code,
+        profil: { id: user.profil.id, nom: user.profil.nom },
+        modules: user.profil.modules,
       },
     };
   }

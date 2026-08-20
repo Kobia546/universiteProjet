@@ -5,6 +5,9 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { ModuleGuard } from './auth/guards/module.guard';
+import { ProfilesModule } from './profiles/profiles.module';
+import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
 import { ProgramsModule } from './programs/programs.module';
 import { AcademicYearsModule } from './academic-years/academic-years.module';
@@ -31,6 +34,8 @@ import { CarnetRecuModule } from './carnet-recu/carnet-recu.module';
     ]),
     PrismaModule,
     AuthModule,
+    ProfilesModule,
+    UsersModule,
     StudentsModule,
     ProgramsModule,
     AcademicYearsModule,
@@ -52,6 +57,10 @@ import { CarnetRecuModule } from './carnet-recu/carnet-recu.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard, // Toutes les routes sont protégées par défaut, sauf @Public()
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ModuleGuard, // Vérifie @RequireModule() — no-op sur les routes non décorées
     },
   ],
 })

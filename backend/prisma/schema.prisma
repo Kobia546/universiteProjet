@@ -22,18 +22,30 @@ datasource db {
 // ------------------------------------------------------------------
 // Utilisateurs & rôles
 // ------------------------------------------------------------------
-enum RoleCode {
+enum ModuleCode {
+  TABLEAU_DE_BORD
+  ADMINISTRATION
+  INSCRIPTIONS
+  ETUDIANTS
+  PAIEMENTS
   COMPTABILITE
-  ADMIN
+  CONSULTATIONS
+  EDITIONS
+  AIDE
 }
 
-model Role {
-  id      String   @id @default(uuid())
-  code    RoleCode @unique
-  libelle String
-  users   User[]
+model Profil {
+  id          String       @id @default(uuid())
+  nom         String       @unique
+  description String?
+  modules     ModuleCode[]
+  // Profil créé par le seed (ex: Administrateur) — protégé contre la suppression.
+  systeme     Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]
 
-  @@map("roles")
+  @@map("profils")
 }
 
 model User {
@@ -45,8 +57,8 @@ model User {
   actif          Boolean  @default(true)
   createdAt      DateTime @default(now())
 
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id])
+  profilId String
+  profil   Profil @relation(fields: [profilId], references: [id])
 
   inscriptions Inscription[]     @relation("AgentInscription")
   paiements    Paiement[]        @relation("AgentPaiement")
