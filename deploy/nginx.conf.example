@@ -1,0 +1,37 @@
+# Nginx : façade publique (80/443) devant les conteneurs Docker de prod.
+#
+# Le backend et le frontend sont liés à 127.0.0.1 uniquement (voir
+# docker-compose.prod.yml) — Nginx est le seul point d'entrée public, et
+# c'est lui qui termine le TLS (via Certbot, voir le README pour les
+# commandes exactes).
+#
+# Usage :
+#   1. Remplacer "votre-domaine.com" par votre vrai domaine (2 occurrences).
+#   2. Copier vers /etc/nginx/sites-available/votre-domaine.com
+#   3. sudo ln -s /etc/nginx/sites-available/votre-domaine.com /etc/nginx/sites-enabled/
+#   4. sudo nginx -t && sudo systemctl reload nginx
+#   5. sudo certbot --nginx -d votre-domaine.com
+#      (Certbot réécrit ce fichier tout seul pour ajouter le bloc 443 + le certificat)
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name votre-domaine.com;
+
+    # Le frontend (SPA React) sert tout, sauf /api/ qui va au backend.
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

@@ -40,7 +40,9 @@ services:
       PORT: 3000
       FRONTEND_URL: ${FRONTEND_URL}
     ports:
-      - "3000:3000"
+      # Lié à 127.0.0.1 uniquement : seul Nginx (sur l'hôte, voir deploy/nginx.conf.example)
+      # doit parler à ce port. Personne ne doit pouvoir l'atteindre depuis l'extérieur du VPS.
+      - "127.0.0.1:3000:3000"
 
   frontend:
     build:
@@ -52,7 +54,8 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      # Idem : Nginx fait office de façade publique (80/443) et proxifie vers ce port.
+      - "127.0.0.1:8080:80"
 
 volumes:
   erp_pg_data:
