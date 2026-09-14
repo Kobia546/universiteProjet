@@ -21,16 +21,21 @@ export class DashboardService {
     // Le mois utilisé pour les cartes Recettes/Dépenses doit toujours
     // appartenir à l'année universitaire sélectionnée — jamais un mois
     // extérieur à sa période. Exemple concret : si l'année active est
-    // 2025-2026 (on est en août 2026) et qu'on sélectionne 2024-2025 (déjà
-    // terminée, aucune donnée saisie), il ne faut PAS afficher les
-    // données d'août 2026 (mois réel) sous prétexte qu'elles existent
-    // ailleurs — il faut rester dans la période de 2024-2025, où il n'y a
-    // effectivement rien, donc 0 partout.
+    // 2025-2026 (on est en août 2026) et qu'on choisit EXPLICITEMENT (menu
+    // déroulant) 2024-2025 (déjà terminée, aucune donnée saisie), il ne
+    // faut PAS afficher les données d'août 2026 (mois réel) sous prétexte
+    // qu'elles existent ailleurs — il faut rester dans la période de
+    // 2024-2025, où il n'y a effectivement rien, donc 0 partout.
     //
-    // - Si la période de l'année sélectionnée couvre aujourd'hui → mois
-    //   civil actuel (cas normal : l'année en cours).
-    // - Sinon (année déjà terminée, ou pas encore commencée) → on prend le
-    //   premier mois de cette année-là, qui reste dans sa période.
+    // Ce repli ne s'applique qu'à un choix explicite d'année. Si c'est
+    // simplement l'année active par défaut qui ne couvre plus aujourd'hui
+    // (cas courant : personne n'a encore créé/activé la nouvelle année
+    // universitaire pendant l'inter-session), on affiche quand même le
+    // vrai mois civil en cours plutôt que de retomber sur le premier mois
+    // d'une année déjà terminée — sinon le tableau de bord affiche un mois
+    // qui n'a plus rien à voir avec "maintenant" tant que personne n'a
+    // pensé à créer la nouvelle année.
+    const anneeExplicitementChoisie = !!anneeUniversitaireId;
     let debutMois: Date;
     let finMois: Date;
 
@@ -39,7 +44,7 @@ export class DashboardService {
       finMois = new Date(
         Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() + 1, 0, 23, 59, 59),
       );
-    } else if (anneeDebut) {
+    } else if (anneeDebut && anneeExplicitementChoisie) {
       debutMois = new Date(Date.UTC(anneeDebut.getUTCFullYear(), anneeDebut.getUTCMonth(), 1));
       finMois = new Date(
         Date.UTC(anneeDebut.getUTCFullYear(), anneeDebut.getUTCMonth() + 1, 0, 23, 59, 59),
