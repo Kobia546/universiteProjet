@@ -101,9 +101,11 @@ model Etudiant {
   matricule                   String       @unique
   nom                         String
   prenom                      String
-  sexe                        Sexe
+  // Optionnels : certains imports en masse (historique papier) n'ont pas
+  // cette information au moment de la saisie — à compléter plus tard.
+  sexe                        Sexe?
   type                        TypeEtudiant @default(ETUDIANT)
-  dateNaissance               DateTime
+  dateNaissance               DateTime?
   lieuNaissance               String?
   telephone                   String?
   email                       String?
