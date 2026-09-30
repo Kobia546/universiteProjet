@@ -56,9 +56,10 @@ export class PaymentsService {
       },
     });
 
-    // 3. Générer l'écriture comptable EP703 correspondante
-    const libelle = `Paiement ${dto.motif} — ${inscription.etudiant.prenom} ${inscription.etudiant.nom} (${inscription.etudiant.matricule})`;
-    await this.accountingService.creerRecetteDepuisPaiement(paiement, libelle, agentId);
+    // 3. Ne pas créer d'écriture comptable automatiquement ici.
+    // La recette/dépense est saisie par le comptable manuellement via les
+    // opérations de caisse en fin de journée. L'inscription et le paiement
+    // restent uniquement un flux métier et un reçu papier/numérique.
 
     // 4. Recalculer le statut des échéances de l'inscription
     await this.echeancesService.recalculer(dto.inscriptionId);
