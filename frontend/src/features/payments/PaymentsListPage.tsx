@@ -6,6 +6,10 @@ import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { FiltresProgramme } from '../../shared/components/ui/FiltresProgramme';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { fetchPaiements } from './api/paymentsApi';
 import { fetchAnneesUniversitaires } from '../programs/programsApi';
 import { formatDateHeure, formatMontant } from '../../shared/lib/format';
@@ -14,10 +18,17 @@ export function PaymentsListPage() {
   const navigate = useNavigate();
   const [anneeFiltre, setAnneeFiltre] = useState('');
   const [recherche, setRecherche] = useState('');
+  const [niveauFiltre, setNiveauFiltre] = useState('');
+  const [filiereFiltre, setFiliereFiltre] = useState('');
 
   const { data: paiements, isLoading } = useQuery({
-    queryKey: ['paiements', anneeFiltre],
-    queryFn: () => fetchPaiements({ anneeUniversitaireId: anneeFiltre || undefined }),
+    queryKey: ['paiements', anneeFiltre, niveauFiltre, filiereFiltre],
+    queryFn: () =>
+      fetchPaiements({
+        anneeUniversitaireId: anneeFiltre || undefined,
+        niveauId: niveauFiltre || undefined,
+        filiereId: filiereFiltre || undefined,
+      }),
   });
 
   const { data: annees } = useQuery({
@@ -34,6 +45,8 @@ export function PaymentsListPage() {
         paiement.etudiant.prenom,
         paiement.etudiant.nom,
         paiement.motif,
+        paiement.inscription.niveau.libelle,
+        paiement.inscription.filiere?.libelle,
         paiement.modePaiement,
         paiement.statut,
       ]
@@ -43,6 +56,11 @@ export function PaymentsListPage() {
       return texte.includes(terme);
     });
   }, [paiements, recherche]);
+
+  const page = usePagination(
+    paiementsFiltres,
+    `${anneeFiltre}|${niveauFiltre}|${filiereFiltre}|${recherche}`,
+  );
 
   return (
     <div>
@@ -83,6 +101,15 @@ export function PaymentsListPage() {
         />
       </div>
 
+      <div className="mb-4 grid max-w-2xl gap-3 sm:grid-cols-2">
+        <FiltresProgramme
+          niveauId={niveauFiltre}
+          filiereId={filiereFiltre}
+          onNiveauChange={setNiveauFiltre}
+          onFiliereChange={setFiliereFiltre}
+        />
+      </div>
+
       <Card className="overflow-hidden p-0">
         {isLoading ? (
           <p className="p-6 text-sm text-slate-500">Chargement...</p>
@@ -94,6 +121,7 @@ export function PaymentsListPage() {
               <tr>
                 <th className="px-5 py-3">N° carnet</th>
                 <th className="px-5 py-3">Étudiant</th>
+                <th className="px-5 py-3">Niveau – Filière</th>
                 <th className="px-5 py-3">Motif</th>
                 <th className="px-5 py-3">Mode</th>
                 <th className="px-5 py-3">Date</th>
@@ -103,7 +131,7 @@ export function PaymentsListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paiementsFiltres.map((paiement) => (
+              {page.pageItems.map((paiement) => (
                 <tr
                   key={paiement.id}
                   onClick={() => navigate(`/paiements/${paiement.id}`)}
@@ -114,6 +142,9 @@ export function PaymentsListPage() {
                   </td>
                   <td className="px-5 py-3 font-medium text-slate-900">
                     {paiement.etudiant.prenom} {paiement.etudiant.nom}
+                  </td>
+                  <td className="px-5 py-3 text-xs text-slate-600">
+                    {libelleProgramme(paiement.inscription.niveau, paiement.inscription.filiere)}
                   </td>
                   <td className="px-5 py-3 text-slate-700">{paiement.motif}</td>
                   <td className="px-5 py-3 text-slate-500">{paiement.modePaiement}</td>
@@ -138,6 +169,9 @@ export function PaymentsListPage() {
             </tbody>
           </table></div>
         )}
+        <div className="px-5 pb-4">
+          <Pagination p={page} />
+        </div>
       </Card>
     </div>
   );

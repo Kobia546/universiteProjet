@@ -5,7 +5,11 @@ import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
 import { Input } from '../../shared/components/ui/Input';
 import { fetchInscriptions } from '../enrollments/api/enrollmentsApi';
-import { fetchFilieres, fetchAnneesUniversitaires } from '../programs/programsApi';
+import { fetchAnneesUniversitaires } from '../programs/programsApi';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { FiltresProgramme } from '../../shared/components/ui/FiltresProgramme';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { fetchEp703, fetchEp704 } from '../accounting/api/accountingApi';
 import { formatDate, formatMontant } from '../../shared/lib/format';
 
@@ -52,27 +56,28 @@ export function ConsultationsPage() {
 
 function UniversitairesTab() {
   const [anneeUniversitaireId, setAnneeUniversitaireId] = useState('');
+  const [niveauId, setNiveauId] = useState('');
   const [filiereId, setFiliereId] = useState('');
 
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
     queryFn: fetchAnneesUniversitaires,
   });
-  const { data: filieres } = useQuery({ queryKey: ['filieres'], queryFn: fetchFilieres });
-
   const { data: inscriptions, isLoading } = useQuery({
-    queryKey: ['consultation-inscriptions', anneeUniversitaireId, filiereId],
+    queryKey: ['consultation-inscriptions', anneeUniversitaireId, niveauId, filiereId],
     queryFn: () =>
       fetchInscriptions({
         anneeUniversitaireId: anneeUniversitaireId || undefined,
+        niveauId: niveauId || undefined,
         filiereId: filiereId || undefined,
       }),
   });
+  const page = usePagination(inscriptions ?? [], `${anneeUniversitaireId}|${niveauId}|${filiereId}`);
 
   return (
     <div className="space-y-4">
       <Card>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Année universitaire</label>
             <select
@@ -88,21 +93,12 @@ function UniversitairesTab() {
               ))}
             </select>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-700">Filière</label>
-            <select
-              value={filiereId}
-              onChange={(e) => setFiliereId(e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="">Toutes les filières</option>
-              {filieres?.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.libelle}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FiltresProgramme
+            niveauId={niveauId}
+            filiereId={filiereId}
+            onNiveauChange={setNiveauId}
+            onFiliereChange={setFiliereId}
+          />
         </div>
       </Card>
 
@@ -118,14 +114,14 @@ function UniversitairesTab() {
                 <tr>
                   <th className="px-5 py-3">N° inscription</th>
                   <th className="px-5 py-3">Universitaire</th>
-                  <th className="px-5 py-3">Filière</th>
+                  <th className="px-5 py-3">Niveau – Filière</th>
                   <th className="px-5 py-3">Année</th>
                   <th className="px-5 py-3 text-right">Montant dû</th>
                   <th className="px-5 py-3">Statut</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {inscriptions.map((i) => (
+                {page.pageItems.map((i) => (
                   <tr key={i.id}>
                     <td className="px-5 py-3 font-mono text-xs text-slate-600">
                       {i.numeroInscription}
@@ -133,7 +129,7 @@ function UniversitairesTab() {
                     <td className="px-5 py-3 font-medium text-slate-900">
                       {i.etudiant.prenom} {i.etudiant.nom}
                     </td>
-                    <td className="px-5 py-3 text-slate-700">{i.filiere.libelle}</td>
+                    <td className="px-5 py-3 text-slate-700">{libelleProgramme(i.niveau, i.filiere)}</td>
                     <td className="px-5 py-3 text-slate-500">{i.anneeUniversitaire.libelle}</td>
                     <td className="px-5 py-3 text-right font-medium">
                       {formatMontant(i.montantTotalDu)}
@@ -147,6 +143,9 @@ function UniversitairesTab() {
             </table>
           </div>
         )}
+        <div className="px-5 pb-4">
+          <Pagination p={page} />
+        </div>
       </Card>
     </div>
   );
@@ -161,6 +160,7 @@ function RecettesTab() {
     queryFn: () => fetchEp703({ dateDebut: dateDebut || undefined, dateFin: dateFin || undefined }),
   });
 
+  const page = usePagination(recettes ?? [], `${dateDebut}|${dateFin}`);
   const total = recettes?.filter((r) => r.statut === 'VALIDE').reduce((s, r) => s + Number(r.montant), 0) ?? 0;
 
   return (
@@ -194,7 +194,7 @@ function RecettesTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {recettes.map((r) => (
+                {page.pageItems.map((r) => (
                   <tr key={r.id}>
                     <td className="px-5 py-3 font-mono text-xs text-slate-600">{r.numeroBordereau}</td>
                     <td className="px-5 py-3 text-slate-500">{formatDate(r.date)}</td>
@@ -209,6 +209,9 @@ function RecettesTab() {
             </table>
           </div>
         )}
+        <div className="px-5 pb-4">
+          <Pagination p={page} />
+        </div>
       </Card>
     </div>
   );
@@ -223,6 +226,7 @@ function DepensesTab() {
     queryFn: () => fetchEp704({ dateDebut: dateDebut || undefined, dateFin: dateFin || undefined }),
   });
 
+  const page = usePagination(depenses ?? [], `${dateDebut}|${dateFin}`);
   const total = depenses?.filter((d) => d.statut === 'VALIDE').reduce((s, d) => s + Number(d.montant), 0) ?? 0;
 
   return (
@@ -256,7 +260,7 @@ function DepensesTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {depenses.map((d) => (
+                {page.pageItems.map((d) => (
                   <tr key={d.id}>
                     <td className="px-5 py-3 font-mono text-xs text-slate-600">{d.numeroOperation}</td>
                     <td className="px-5 py-3 text-slate-500">{formatDate(d.date)}</td>
@@ -271,6 +275,9 @@ function DepensesTab() {
             </table>
           </div>
         )}
+        <div className="px-5 pb-4">
+          <Pagination p={page} />
+        </div>
       </Card>
     </div>
   );

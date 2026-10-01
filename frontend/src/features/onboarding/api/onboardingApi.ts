@@ -13,6 +13,7 @@ export interface CreateOnboardingInput {
   telephone?: string;
   email?: string;
   adresse?: string;
+  niveauId: string;
   filiereId: string;
   anneeUniversitaireId: string;
   dateInscription?: string;

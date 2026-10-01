@@ -84,6 +84,9 @@ export class CreateOnboardingDto {
 
   // ---- Inscription ----
   @IsString()
+  niveauId: string;
+
+  @IsString()
   filiereId: string;
 
   @IsString()

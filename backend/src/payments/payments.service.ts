@@ -6,6 +6,7 @@ import { CarnetRecuService } from '../carnet-recu/carnet-recu.service';
 import { CreatePaiementDto } from './dto/create-paiement.dto';
 import { AuditService } from '../audit/audit.service';
 import { EcheancesService } from '../enrollments/echeances.service';
+import { supprimerPaiementsTx } from '../common/suppression';
 
 @Injectable()
 export class PaymentsService {
@@ -104,26 +105,65 @@ export class PaymentsService {
     return this.findOne(id);
   }
 
+  /**
+   * Suppression définitive d'un paiement (administrateur), reçu compris.
+   * Libère le numéro de reçu du carnet. L'écriture de recette éventuelle
+   * est conservée mais détachée. Préférer « annuler » quand la trace du
+   * paiement doit rester visible.
+   */
+  async remove(id: string, agentId: string) {
+    const paiement = await this.prisma.paiement.findUnique({
+      where: { id },
+      include: { recu: true },
+    });
+    if (!paiement) throw new NotFoundException('Paiement introuvable');
+
+    await this.prisma.$transaction((tx) => supprimerPaiementsTx(tx, [id]));
+    await this.echeancesService.recalculer(paiement.inscriptionId);
+
+    await this.auditService.enregistrer({
+      userId: agentId,
+      action: 'suppression_paiement',
+      ressourceType: 'paiement',
+      ressourceId: id,
+      details: {
+        montant: Number(paiement.montant),
+        inscriptionId: paiement.inscriptionId,
+        numeroRecu: paiement.recu?.numeroRecu ?? null,
+      },
+    });
+    return { id };
+  }
+
   async findAll(params: {
     etudiantId?: string;
     inscriptionId?: string;
     modePaiement?: string;
     anneeUniversitaireId?: string;
+    niveauId?: string;
+    filiereId?: string;
   }) {
-    const { etudiantId, inscriptionId, modePaiement, anneeUniversitaireId } = params;
+    const { etudiantId, inscriptionId, modePaiement, anneeUniversitaireId, niveauId, filiereId } =
+      params;
     const paiements = await this.prisma.paiement.findMany({
       where: {
         ...(etudiantId ? { etudiantId } : {}),
         ...(inscriptionId ? { inscriptionId } : {}),
         ...(modePaiement ? { modePaiement: modePaiement as any } : {}),
-        ...(anneeUniversitaireId
-          ? { inscription: { anneeUniversitaireId } }
+        ...(anneeUniversitaireId || niveauId || filiereId
+          ? {
+              inscription: {
+                ...(anneeUniversitaireId ? { anneeUniversitaireId } : {}),
+                ...(niveauId ? { niveauId } : {}),
+                ...(filiereId ? { filiereId } : {}),
+              },
+            }
           : {}),
       },
       include: {
         etudiant: true,
         inscription: {
-          include: { filiere: true, paiements: { where: { statut: 'VALIDE' } } },
+          include: { niveau: true, filiere: true, paiements: { where: { statut: 'VALIDE' } } },
         },
         recu: true,
         agent: true,
@@ -151,6 +191,7 @@ export class PaymentsService {
         etudiant: true,
         inscription: {
           include: {
+            niveau: true,
             filiere: true,
             anneeUniversitaire: true,
             echeances: { orderBy: { numeroEcheance: 'asc' } },

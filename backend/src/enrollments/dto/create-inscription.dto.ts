@@ -4,6 +4,11 @@ export class CreateInscriptionDto {
   @IsString()
   etudiantId: string;
 
+  /** Niveau d'études : Licence 1/2/3, Master 1/2. */
+  @IsString()
+  niveauId: string;
+
+  /** Filière (spécialité) choisie après le niveau. */
   @IsString()
   filiereId: string;
 

@@ -1,4 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ModuleCode } from '@prisma/client';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
+import { UpdateInscriptionDto } from './dto/update-inscription.dto';
 import { EnrollmentsService } from './enrollments.service';
 import { CreateInscriptionDto } from './dto/create-inscription.dto';
 import { CreateEcheanceDto } from './dto/create-echeance.dto';
@@ -21,15 +24,32 @@ export class EnrollmentsController {
   @Get()
   findAll(
     @Query('anneeUniversitaireId') anneeUniversitaireId?: string,
+    @Query('niveauId') niveauId?: string,
     @Query('filiereId') filiereId?: string,
     @Query('statut') statut?: string,
   ) {
-    return this.enrollmentsService.findAll({ anneeUniversitaireId, filiereId, statut });
+    return this.enrollmentsService.findAll({ anneeUniversitaireId, niveauId, filiereId, statut });
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.enrollmentsService.findOne(id);
+  }
+
+  @Patch(':id')
+  @RequireModule(ModuleCode.ADMINISTRATION)
+  modifier(
+    @Param('id') id: string,
+    @Body() dto: UpdateInscriptionDto,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.enrollmentsService.modifier(id, dto, user.userId);
+  }
+
+  @Delete(':id')
+  @RequireModule(ModuleCode.ADMINISTRATION)
+  remove(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.enrollmentsService.remove(id, user.userId);
   }
 
   @Patch(':id/date-inscription')

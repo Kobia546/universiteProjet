@@ -15,7 +15,7 @@ export class PaymentRulesService {
   findAll(anneeUniversitaireId?: string) {
     return this.prisma.reglePaiement.findMany({
       where: anneeUniversitaireId ? { anneeUniversitaireId } : {},
-      include: { filiere: true, anneeUniversitaire: true },
+      include: { niveau: true, anneeUniversitaire: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -34,30 +34,30 @@ export class PaymentRulesService {
 
   /**
    * Résout la règle de paiement la plus spécifique applicable : priorité
-   * filière+type > filière seule > type seul > règle générale.
+   * niveau+type > niveau seul > type seul > règle générale.
    */
   async resoudreRegleApplicable(params: {
-    filiereId: string;
+    niveauId: string;
     type: TypeEtudiant;
     anneeUniversitaireId: string;
   }) {
-    const { filiereId, type, anneeUniversitaireId } = params;
+    const { niveauId, type, anneeUniversitaireId } = params;
 
     const regles = await this.prisma.reglePaiement.findMany({
       where: {
         anneeUniversitaireId,
         OR: [
-          { filiereId, type },
-          { filiereId, type: null },
-          { filiereId: null, type },
-          { filiereId: null, type: null },
+          { niveauId, type },
+          { niveauId, type: null },
+          { niveauId: null, type },
+          { niveauId: null, type: null },
         ],
       },
     });
 
     const parSpecificite = (r: (typeof regles)[number]) => {
-      if (r.filiereId && r.type) return 3;
-      if (r.filiereId) return 2;
+      if (r.niveauId && r.type) return 3;
+      if (r.niveauId) return 2;
       if (r.type) return 1;
       return 0;
     };

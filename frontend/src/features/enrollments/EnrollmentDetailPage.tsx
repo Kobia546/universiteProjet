@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Check, X, Wallet } from 'lucide-react';
+import { ConfirmDialog } from '../../shared/components/ui/ConfirmDialog';
+import { Select } from '../../shared/components/ui/Select';
+import { useEstAdmin } from '../../shared/hooks/useEstAdmin';
+import { messageErreur } from '../../shared/lib/erreurs';
+import { libelleProgramme } from '../../shared/lib/programme';
+import { fetchFilieres, fetchNiveaux } from '../programs/programsApi';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
@@ -13,6 +19,8 @@ import {
   modifierEcheance,
   supprimerEcheance,
   modifierDateInscription,
+  modifierInscription,
+  supprimerInscription,
   type Echeance,
 } from './api/enrollmentsApi';
 import { formatDate, formatMontant } from '../../shared/lib/format';
@@ -37,6 +45,13 @@ export function EnrollmentDetailPage() {
   const [nouvelleDate, setNouvelleDate] = useState('');
   const [editionDateInscription, setEditionDateInscription] = useState(false);
   const [dateInscriptionEdition, setDateInscriptionEdition] = useState('');
+  const estAdmin = useEstAdmin();
+  const [corrections, setCorrections] = useState<{
+    niveauId?: string;
+    filiereId?: string;
+    statut?: string;
+  }>({});
+  const [confirmerSuppression, setConfirmerSuppression] = useState(false);
 
   const { data: inscription, isLoading } = useQuery({
     queryKey: ['inscription', id],
@@ -81,6 +96,33 @@ export function EnrollmentDetailPage() {
     },
   });
 
+  const { data: niveaux } = useQuery({ queryKey: ['niveaux'], queryFn: fetchNiveaux, enabled: estAdmin });
+  const { data: filieres } = useQuery({
+    queryKey: ['filieres'],
+    queryFn: () => fetchFilieres(),
+    enabled: estAdmin,
+  });
+
+  const correctionMutation = useMutation({
+    mutationFn: (input: { niveauId?: string; filiereId?: string; statut?: any }) =>
+      modifierInscription(id!, input),
+    onSuccess: () => {
+      invalider();
+      setCorrections({});
+      queryClient.invalidateQueries({ queryKey: ['inscriptions'] });
+    },
+  });
+
+  const suppressionMutation = useMutation({
+    mutationFn: () => supprimerInscription(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
+      queryClient.invalidateQueries({ queryKey: ['etudiant'] });
+      navigate('/inscriptions');
+    },
+  });
+
   function commencerEdition(echeance: Echeance) {
     setEcheanceEnEdition(echeance.id);
     setMontantEdition(String(echeance.montantPrevu));
@@ -98,7 +140,7 @@ export function EnrollmentDetailPage() {
     <div>
       <PageHeader
         title={`Inscription ${inscription.numeroInscription}`}
-        description={`${inscription.etudiant.prenom} ${inscription.etudiant.nom} — ${inscription.filiere.libelle} · ${inscription.anneeUniversitaire.libelle}`}
+        description={`${inscription.etudiant.prenom} ${inscription.etudiant.nom} — ${libelleProgramme(inscription.niveau, inscription.filiere)} · ${inscription.anneeUniversitaire.libelle}`}
         action={
           resteAPayer > 0 && inscription.statut !== 'ANNULEE' ? (
             <Button onClick={() => navigate(`/paiements/nouveau?inscriptionId=${inscription.id}`)}>
@@ -346,6 +388,90 @@ export function EnrollmentDetailPage() {
           )}
         </Card>
       </div>
+      {estAdmin && (
+        <Card className="mt-6 border-amber-200 bg-amber-50/40">
+          <h2 className="mb-1 font-serif text-[15px] font-semibold text-slate-900">
+            Correction (administrateur)
+          </h2>
+          <p className="mb-4 text-xs text-slate-500">
+            Corrige le niveau, la filière ou le statut en cas d'erreur de saisie. Le montant dû et
+            l'échéancier ne sont pas recalculés : ajustez-les ci-dessous si le niveau change.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Select
+              label="Niveau"
+              value={corrections.niveauId ?? inscription.niveau.id}
+              onChange={(e) => setCorrections((c) => ({ ...c, niveauId: e.target.value }))}
+            >
+              {niveaux?.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.libelle}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="Filière"
+              value={corrections.filiereId ?? inscription.filiere?.id ?? ''}
+              onChange={(e) => setCorrections((c) => ({ ...c, filiereId: e.target.value }))}
+            >
+              {!inscription.filiere && <option value="">Non renseignée</option>}
+              {filieres?.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.libelle}
+                  {f.actif ? '' : ' (désactivée)'}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="Statut"
+              value={corrections.statut ?? inscription.statut}
+              onChange={(e) => setCorrections((c) => ({ ...c, statut: e.target.value }))}
+            >
+              <option value="EN_COURS">En cours</option>
+              <option value="VALIDEE">Validée</option>
+              <option value="ANNULEE">Annulée</option>
+              <option value="TRANSFEREE">Transférée</option>
+            </Select>
+          </div>
+          {correctionMutation.isError && (
+            <p className="mt-3 text-sm text-red-600">{messageErreur(correctionMutation.error)}</p>
+          )}
+          <div className="mt-4 flex flex-wrap justify-between gap-2">
+            <Button
+              variant="danger"
+              onClick={() => setConfirmerSuppression(true)}
+              disabled={suppressionMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer l'inscription
+            </Button>
+            <Button
+              disabled={Object.keys(corrections).length === 0}
+              isLoading={correctionMutation.isPending}
+              onClick={() => correctionMutation.mutate(corrections)}
+            >
+              Enregistrer la correction
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={confirmerSuppression}
+        titre="Supprimer cette inscription ?"
+        message={
+          <>
+            L'inscription {inscription.numeroInscription}, son échéancier, ses paiements et leurs
+            reçus seront supprimés définitivement. Les numéros de reçu redeviendront disponibles
+            dans les carnets.
+          </>
+        }
+        isLoading={suppressionMutation.isPending}
+        error={suppressionMutation.isError ? messageErreur(suppressionMutation.error) : null}
+        onConfirm={() => suppressionMutation.mutate()}
+        onCancel={() => setConfirmerSuppression(false)}
+      />
+
     </div>
   );
 }

@@ -1,21 +1,42 @@
-import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
-import { Printer } from 'lucide-react';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Printer, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
 import { Button } from '../../shared/components/ui/Button';
-import { fetchPaiement } from './api/paymentsApi';
+import { fetchPaiement, supprimerPaiement } from './api/paymentsApi';
+import { ConfirmDialog } from '../../shared/components/ui/ConfirmDialog';
+import { useEstAdmin } from '../../shared/hooks/useEstAdmin';
+import { messageErreur } from '../../shared/lib/erreurs';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { formatDate, formatDateHeure, formatMontant } from '../../shared/lib/format';
 import { montantEnLettres } from '../../shared/lib/montantEnLettres';
 
 export function PaymentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const estAdmin = useEstAdmin();
+  const [confirmerSuppression, setConfirmerSuppression] = useState(false);
 
   const { data: paiement, isLoading } = useQuery({
     queryKey: ['paiement', id],
     queryFn: () => fetchPaiement(id!),
     enabled: !!id,
+  });
+
+  const suppression = useMutation({
+    mutationFn: () => supprimerPaiement(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
+      queryClient.invalidateQueries({ queryKey: ['inscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['inscription'] });
+      queryClient.invalidateQueries({ queryKey: ['etudiant'] });
+      queryClient.invalidateQueries({ queryKey: ['carnets-recu'] });
+      navigate('/paiements');
+    },
   });
 
   if (isLoading) return <p className="text-sm text-slate-500">Chargement...</p>;
@@ -53,9 +74,30 @@ export function PaymentDetailPage() {
               <Printer className="h-4 w-4" />
               Imprimer
             </Button>
-         
+            {estAdmin && (
+              <Button variant="danger" onClick={() => setConfirmerSuppression(true)}>
+                <Trash2 className="h-4 w-4" />
+                Supprimer
+              </Button>
+            )}
           </div>
         }
+      />
+
+      <ConfirmDialog
+        open={confirmerSuppression}
+        titre="Supprimer ce paiement ?"
+        message={
+          <>
+            Le paiement et son reçu N° {numeroCarnetAffiche} seront supprimés définitivement. Le
+            numéro de reçu redeviendra disponible dans le carnet et le solde de l'inscription sera
+            recalculé.
+          </>
+        }
+        isLoading={suppression.isPending}
+        error={suppression.isError ? messageErreur(suppression.error) : null}
+        onConfirm={() => suppression.mutate()}
+        onCancel={() => setConfirmerSuppression(false)}
       />
 
       {paiement.statut === 'ANNULE' && (
@@ -125,7 +167,7 @@ export function PaymentDetailPage() {
           <ChampLigne label="En règlement de" valeur={paiement.motif} />
           <ChampLigne
             label="Année d'études"
-            valeur={`${paiement.inscription.filiere.libelle} — ${paiement.inscription.anneeUniversitaire?.libelle ?? ''}`}
+            valeur={`${libelleProgramme(paiement.inscription.niveau, paiement.inscription.filiere)} — ${paiement.inscription.anneeUniversitaire?.libelle ?? ''}`}
           />
 
           <div className="flex flex-wrap items-center gap-6 border-b border-dotted border-slate-300 pb-3 pt-1">

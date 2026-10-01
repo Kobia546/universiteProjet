@@ -8,6 +8,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ModuleCode } from '@prisma/client';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StudentsService } from './students.service';
 import { CreateEtudiantDto } from './dto/create-etudiant.dto';
 import { UpdateEtudiantDto } from './dto/update-etudiant.dto';
@@ -24,10 +27,11 @@ export class StudentsController {
   @Get()
   findAll(
     @Query('recherche') recherche?: string,
+    @Query('niveauId') niveauId?: string,
     @Query('filiereId') filiereId?: string,
     @Query('anneeUniversitaireId') anneeUniversitaireId?: string,
   ) {
-    return this.studentsService.findAll({ recherche, filiereId, anneeUniversitaireId });
+    return this.studentsService.findAll({ recherche, niveauId, filiereId, anneeUniversitaireId });
   }
 
   // Déclaré AVANT ':id' pour ne pas être intercepté par la route générique
@@ -35,10 +39,14 @@ export class StudentsController {
   findParStatutPaiement(
     @Query('statut') statut: 'doit' | 'solde',
     @Query('anneeUniversitaireId') anneeUniversitaireId?: string,
+    @Query('niveauId') niveauId?: string,
+    @Query('filiereId') filiereId?: string,
   ) {
     return this.studentsService.findParStatutPaiement(
       statut === 'solde' ? 'solde' : 'doit',
       anneeUniversitaireId,
+      niveauId,
+      filiereId,
     );
   }
 
@@ -53,7 +61,8 @@ export class StudentsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.studentsService.remove(id);
+  @RequireModule(ModuleCode.ADMINISTRATION)
+  remove(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.studentsService.remove(id, user.userId);
   }
 }

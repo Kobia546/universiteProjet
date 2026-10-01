@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ModuleCode } from '@prisma/client';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { PaymentsService } from './payments.service';
 import { CreatePaiementDto } from './dto/create-paiement.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -18,8 +20,17 @@ export class PaymentsController {
     @Query('inscriptionId') inscriptionId?: string,
     @Query('modePaiement') modePaiement?: string,
     @Query('anneeUniversitaireId') anneeUniversitaireId?: string,
+    @Query('niveauId') niveauId?: string,
+    @Query('filiereId') filiereId?: string,
   ) {
-    return this.paymentsService.findAll({ etudiantId, inscriptionId, modePaiement, anneeUniversitaireId });
+    return this.paymentsService.findAll({
+      etudiantId,
+      inscriptionId,
+      modePaiement,
+      anneeUniversitaireId,
+      niveauId,
+      filiereId,
+    });
   }
 
   @Get(':id')
@@ -30,5 +41,11 @@ export class PaymentsController {
   @Patch(':id/annuler')
   annuler(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
     return this.paymentsService.annuler(id, user.userId);
+  }
+
+  @Delete(':id')
+  @RequireModule(ModuleCode.ADMINISTRATION)
+  remove(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.paymentsService.remove(id, user.userId);
   }
 }

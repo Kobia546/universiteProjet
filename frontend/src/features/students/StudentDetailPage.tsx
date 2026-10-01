@@ -1,21 +1,43 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import {  Wallet, Pencil } from 'lucide-react';
+import { Wallet, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
 import { Button } from '../../shared/components/ui/Button';
-import { fetchEtudiant } from './api/studentsApi';
+import { fetchEtudiant, supprimerEtudiant } from './api/studentsApi';
+import { ConfirmDialog } from '../../shared/components/ui/ConfirmDialog';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { useEstAdmin } from '../../shared/hooks/useEstAdmin';
+import { messageErreur } from '../../shared/lib/erreurs';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { formatDate, formatMontant } from '../../shared/lib/format';
 
 export function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const estAdmin = useEstAdmin();
+  const [confirmerSuppression, setConfirmerSuppression] = useState(false);
 
   const { data: etudiant, isLoading } = useQuery({
     queryKey: ['etudiant', id],
     queryFn: () => fetchEtudiant(id!),
     enabled: !!id,
+  });
+
+  const pagePaiements = usePagination(etudiant?.paiements ?? [], id);
+
+  const suppression = useMutation({
+    mutationFn: () => supprimerEtudiant(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['etudiants'] });
+      queryClient.invalidateQueries({ queryKey: ['inscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
+      navigate('/etudiants');
+    },
   });
 
   if (isLoading) return <p className="text-sm text-slate-500">Chargement...</p>;
@@ -32,9 +54,30 @@ export function StudentDetailPage() {
               <Pencil className="h-4 w-4" />
               Modifier
             </Button>
-          
+            {estAdmin && (
+              <Button variant="danger" onClick={() => setConfirmerSuppression(true)}>
+                <Trash2 className="h-4 w-4" />
+                Supprimer
+              </Button>
+            )}
           </div>
         }
+      />
+
+      <ConfirmDialog
+        open={confirmerSuppression}
+        titre="Supprimer cet étudiant ?"
+        message={
+          <>
+            La fiche de {etudiant.prenom} {etudiant.nom} ({etudiant.matricule}) sera supprimée
+            définitivement avec toutes ses inscriptions, échéances, paiements et reçus. Cette action
+            est irréversible.
+          </>
+        }
+        isLoading={suppression.isPending}
+        error={suppression.isError ? messageErreur(suppression.error) : null}
+        onConfirm={() => suppression.mutate()}
+        onCancel={() => setConfirmerSuppression(false)}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
@@ -83,7 +126,7 @@ export function StudentDetailPage() {
                 >
                   <div>
                     <p className="text-sm font-medium text-slate-900">
-                      {inscription.filiere?.libelle}
+                      {libelleProgramme(inscription.niveau, inscription.filiere)}
                     </p>
                     <p className="text-xs text-slate-500">
                       {inscription.anneeUniversitaire?.libelle} · N° {inscription.numeroInscription}
@@ -138,21 +181,23 @@ export function StudentDetailPage() {
                 <tr>
                   <th className="py-2">Date</th>
                   <th className="py-2">Année</th>
-                  <th className="py-2">Filière</th>
+                  <th className="py-2">Niveau – Filière</th>
                   <th className="py-2">Motif</th>
                   <th className="py-2">Mode</th>
                   <th className="py-2 text-right">Montant</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {etudiant.paiements.map((paiement) => (
+                {pagePaiements.pageItems.map((paiement) => (
                   <tr key={paiement.id}>
                     <td className="py-2">{formatDate(paiement.datePaiement)}</td>
                     <td className="py-2 text-slate-500">
                       {paiement.inscription?.anneeUniversitaire?.libelle ?? '—'}
                     </td>
                     <td className="py-2 text-slate-500">
-                      {paiement.inscription?.filiere?.libelle ?? '—'}
+                      {paiement.inscription
+                        ? libelleProgramme(paiement.inscription.niveau, paiement.inscription.filiere)
+                        : '—'}
                     </td>
                     <td className="py-2">{paiement.motif}</td>
                     <td className="py-2">
@@ -177,6 +222,7 @@ export function StudentDetailPage() {
               </tbody>
             </table></div>
           )}
+          <Pagination p={pagePaiements} />
         </Card>
       </div>
     </div>

@@ -3,12 +3,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateEtudiantDto } from './dto/create-etudiant.dto';
 import { UpdateEtudiantDto } from './dto/update-etudiant.dto';
 import { MatriculeService } from './matricule.service';
+import { AuditService } from '../audit/audit.service';
+import { supprimerInscriptionsTx, supprimerPaiementsTx } from '../common/suppression';
 
 @Injectable()
 export class StudentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly matriculeService: MatriculeService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(dto: CreateEtudiantDto) {
@@ -22,8 +25,13 @@ export class StudentsService {
     });
   }
 
-  async findAll(params: { recherche?: string; filiereId?: string; anneeUniversitaireId?: string }) {
-    const { recherche, filiereId, anneeUniversitaireId } = params;
+  async findAll(params: {
+    recherche?: string;
+    niveauId?: string;
+    filiereId?: string;
+    anneeUniversitaireId?: string;
+  }) {
+    const { recherche, niveauId, filiereId, anneeUniversitaireId } = params;
 
     // La recherche texte porte sur nom/prénom/matricule/téléphone. En plus,
     // si le texte saisi ressemble à une date (jj/mm/aaaa, jj-mm-aaaa ou
@@ -55,18 +63,30 @@ export class StudentsService {
                 ],
               }
             : {},
-          filiereId
-            ? { inscriptions: { some: { filiereId } } }
-            : {},
-          anneeUniversitaireId
-            ? { inscriptions: { some: { anneeUniversitaireId } } }
+          // Les filtres niveau / filière / année portent sur UNE MÊME
+          // inscription (un étudiant L1 DA en 2024 puis L2 DH en 2025 ne
+          // doit pas apparaître pour « L1 DH »).
+          niveauId || filiereId || anneeUniversitaireId
+            ? {
+                inscriptions: {
+                  some: {
+                    ...(niveauId ? { niveauId } : {}),
+                    ...(filiereId ? { filiereId } : {}),
+                    ...(anneeUniversitaireId ? { anneeUniversitaireId } : {}),
+                  },
+                },
+              }
             : {},
         ],
       },
       include: {
         inscriptions: {
           where: { statut: { not: 'ANNULEE' } },
-          include: { paiements: { where: { statut: 'VALIDE' } } },
+          include: {
+            niveau: true,
+            filiere: true,
+            paiements: { where: { statut: 'VALIDE' } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -85,9 +105,21 @@ export class StudentsService {
         ? inscriptions.find((i) => i.anneeUniversitaireId === anneeUniversitaireId)
         : undefined;
 
+      // Programmes (niveau + filière) à afficher : ceux de l'année filtrée,
+      // sinon toutes les inscriptions actives.
+      const programmes = (
+        anneeUniversitaireId
+          ? inscriptions.filter((i) => i.anneeUniversitaireId === anneeUniversitaireId)
+          : inscriptions
+      ).map((i) => ({
+        niveau: { code: i.niveau.code, libelle: i.niveau.libelle },
+        filiere: i.filiere ? { code: i.filiere.code, libelle: i.filiere.libelle } : null,
+      }));
+
       if (inscriptions.length === 0) {
         return {
           ...reste,
+          programmes,
           statutPaiement: 'AUCUNE_INSCRIPTION' as const,
           resteAPayer: 0,
           dateInscription: inscriptionAnnee?.dateInscription ?? null,
@@ -101,6 +133,7 @@ export class StudentsService {
       const resteAPayer = totalDu - totalPaye;
       return {
         ...reste,
+        programmes,
         statutPaiement: (resteAPayer <= 0 ? 'SOLDE' : 'DOIT') as 'SOLDE' | 'DOIT',
         resteAPayer: Math.max(resteAPayer, 0),
         dateInscription: inscriptionAnnee?.dateInscription ?? null,
@@ -142,6 +175,7 @@ export class StudentsService {
       include: {
         inscriptions: {
           include: {
+            niveau: true,
             filiere: true,
             anneeUniversitaire: true,
             paiements: { where: { statut: 'VALIDE' } },
@@ -151,7 +185,7 @@ export class StudentsService {
         paiements: {
           orderBy: { datePaiement: 'desc' },
           include: {
-            inscription: { include: { filiere: true, anneeUniversitaire: true } },
+            inscription: { include: { niveau: true, filiere: true, anneeUniversitaire: true } },
           },
         },
       },
@@ -182,9 +216,46 @@ export class StudentsService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.etudiant.delete({ where: { id } });
+  /**
+   * Suppression définitive (administrateur) d'un étudiant et de tout son
+   * dossier : inscriptions, échéances, paiements et reçus.
+   */
+  async remove(id: string, agentId: string) {
+    const etudiant = await this.prisma.etudiant.findUnique({
+      where: { id },
+      include: {
+        inscriptions: { select: { id: true } },
+        paiements: { select: { id: true } },
+      },
+    });
+    if (!etudiant) throw new NotFoundException(`Étudiant ${id} introuvable`);
+
+    await this.prisma.$transaction(async (tx) => {
+      await supprimerPaiementsTx(
+        tx,
+        etudiant.paiements.map((p) => p.id),
+      );
+      await supprimerInscriptionsTx(
+        tx,
+        etudiant.inscriptions.map((i) => i.id),
+      );
+      await tx.etudiant.delete({ where: { id } });
+    });
+
+    await this.audit.enregistrer({
+      userId: agentId,
+      action: 'suppression_etudiant',
+      ressourceType: 'etudiant',
+      ressourceId: id,
+      details: {
+        matricule: etudiant.matricule,
+        nom: etudiant.nom,
+        prenom: etudiant.prenom,
+        inscriptionsSupprimees: etudiant.inscriptions.length,
+        paiementsSupprimes: etudiant.paiements.length,
+      },
+    });
+    return { id };
   }
 
   /**
@@ -193,12 +264,21 @@ export class StudentsService {
    * — comparé sur cette seule année pour ne pas mélanger les années entre
    * elles dans le calcul du solde.
    */
-  async findParStatutPaiement(statut: 'doit' | 'solde', anneeUniversitaireId?: string) {
+  async findParStatutPaiement(
+    statut: 'doit' | 'solde',
+    anneeUniversitaireId?: string,
+    niveauId?: string,
+    filiereId?: string,
+  ) {
     const anneeCiblee = anneeUniversitaireId
       ? { id: anneeUniversitaireId }
       : await this.prisma.anneeUniversitaire.findFirst({ where: { active: true } });
 
-    const filtreAnnee = anneeCiblee ? { anneeUniversitaireId: anneeCiblee.id } : {};
+    const filtreAnnee = {
+      ...(anneeCiblee ? { anneeUniversitaireId: anneeCiblee.id } : {}),
+      ...(niveauId ? { niveauId } : {}),
+      ...(filiereId ? { filiereId } : {}),
+    };
 
     const etudiants = await this.prisma.etudiant.findMany({
       where: { inscriptions: { some: { statut: { not: 'ANNULEE' }, ...filtreAnnee } } },
@@ -206,6 +286,7 @@ export class StudentsService {
         inscriptions: {
           where: { statut: { not: 'ANNULEE' }, ...filtreAnnee },
           include: {
+            niveau: true,
             filiere: true,
             anneeUniversitaire: true,
             paiements: { where: { statut: 'VALIDE' } },
@@ -229,7 +310,9 @@ export class StudentsService {
           prenom: e.prenom,
           telephone: e.telephone,
           inscriptions: e.inscriptions.map((i) => ({
-            filiere: i.filiere.code,
+            niveau: i.niveau.code,
+            filiere: i.filiere?.code ?? null,
+            filiereLibelle: i.filiere?.libelle ?? null,
             anneeUniversitaire: i.anneeUniversitaire.libelle,
           })),
           totalDu,

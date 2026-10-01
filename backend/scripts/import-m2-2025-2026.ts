@@ -36,7 +36,16 @@ const CHEMIN_FICHIER =
   process.argv[2] || 'C:/Users/hp/Downloads/erp-universite/MASTER II  2025-2026.xlsx';
 
 const LIBELLE_ANNEE = '2025-2026';
-const CODE_FILIERE = 'M2';
+const CODE_NIVEAU = 'M2';
+
+// Spécialité (texte de la feuille) -> code de la filière en base.
+const CODE_FILIERE_PAR_SPECIALITE: Record<string, string> = {
+  "Droit de l'Environnement": 'DE',
+  'Droit de l’Homme': 'DH',
+  'Droit des Affaires': 'DA',
+  'Fiscalité des Entreprises': 'FE',
+  'Droit des Contentieux': 'DC',
+};
 
 // Feuille -> spécialité affichée. Les paires "(2)" pointent vers la même
 // spécialité que leur feuille principale : elles écrasent ses lignes.
@@ -110,8 +119,9 @@ async function main() {
   const annee = await prisma.anneeUniversitaire.findFirst({ where: { libelle: LIBELLE_ANNEE } });
   if (!annee) throw new Error(`Année universitaire "${LIBELLE_ANNEE}" introuvable — lancez le seed d'abord.`);
 
-  const filiere = await prisma.filiere.findUnique({ where: { code: CODE_FILIERE } });
-  if (!filiere) throw new Error(`Filière "${CODE_FILIERE}" introuvable — lancez le seed d'abord.`);
+  const niveau = await prisma.niveau.findUnique({ where: { code: CODE_NIVEAU } });
+  if (!niveau) throw new Error(`Niveau "${CODE_NIVEAU}" introuvable — lancez le seed d'abord.`);
+  const filieres = new Map((await prisma.filiere.findMany()).map((f) => [f.code, f.id]));
 
   const agent =
     (await prisma.user.findUnique({ where: { email: 'admin@universite.local' } })) ??
@@ -169,7 +179,8 @@ async function main() {
         data: {
           numeroInscription,
           etudiantId: etudiant.id,
-          filiereId: filiere.id,
+          niveauId: niveau.id,
+          filiereId: filieres.get(CODE_FILIERE_PAR_SPECIALITE[specialite] ?? '') ?? null,
           anneeUniversitaireId: annee.id,
           statut: StatutInscription.VALIDEE,
           montantTotalDu: ligne.montant,

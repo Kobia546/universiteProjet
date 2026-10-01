@@ -4,18 +4,18 @@ export type TypeEtudiant = 'ETUDIANT' | 'TRAVAILLEUR';
 
 export interface ReglePaiement {
   id: string;
-  filiereId: string | null;
+  niveauId: string | null;
   type: TypeEtudiant | null;
   anneeUniversitaireId: string;
   montantTotal: number | string;
   pourcentageInscription: number;
   nombreEcheances: number;
-  filiere?: { code: string; libelle: string } | null;
+  niveau?: { code: string; libelle: string } | null;
   anneeUniversitaire?: { libelle: string };
 }
 
 export interface CreateReglePaiementInput {
-  filiereId?: string;
+  niveauId?: string;
   type?: TypeEtudiant;
   anneeUniversitaireId: string;
   montantTotal: number;

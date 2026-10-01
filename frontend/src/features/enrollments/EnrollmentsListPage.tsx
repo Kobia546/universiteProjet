@@ -6,6 +6,10 @@ import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { FiltresProgramme } from '../../shared/components/ui/FiltresProgramme';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { fetchInscriptions } from './api/enrollmentsApi';
 import { fetchAnneesUniversitaires } from '../programs/programsApi';
 import { formatMontant } from '../../shared/lib/format';
@@ -21,6 +25,8 @@ export function EnrollmentsListPage() {
   const navigate = useNavigate();
   const [anneeFiltre, setAnneeFiltre] = useState<string>('');
   const [recherche, setRecherche] = useState('');
+  const [niveauFiltre, setNiveauFiltre] = useState('');
+  const [filiereFiltre, setFiliereFiltre] = useState('');
 
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
@@ -36,8 +42,13 @@ export function EnrollmentsListPage() {
   }, [annees, anneeFiltre]);
 
   const { data: inscriptions, isLoading } = useQuery({
-    queryKey: ['inscriptions', anneeFiltre],
-    queryFn: () => fetchInscriptions(anneeFiltre ? { anneeUniversitaireId: anneeFiltre } : {}),
+    queryKey: ['inscriptions', anneeFiltre, niveauFiltre, filiereFiltre],
+    queryFn: () =>
+      fetchInscriptions({
+        anneeUniversitaireId: anneeFiltre || undefined,
+        niveauId: niveauFiltre || undefined,
+        filiereId: filiereFiltre || undefined,
+      }),
     enabled: !!anneeFiltre || annees?.length === 0,
   });
 
@@ -50,7 +61,8 @@ export function EnrollmentsListPage() {
         inscription.numeroInscription,
         inscription.etudiant.prenom,
         inscription.etudiant.nom,
-        inscription.filiere.libelle,
+        inscription.niveau.libelle,
+        inscription.filiere?.libelle,
         inscription.anneeUniversitaire.libelle,
         inscription.statut,
       ]
@@ -62,11 +74,16 @@ export function EnrollmentsListPage() {
     });
   }, [inscriptions, recherche]);
 
+  const page = usePagination(
+    inscriptionsFiltres,
+    `${anneeFiltre}|${niveauFiltre}|${filiereFiltre}|${recherche}`,
+  );
+
   return (
     <div>
       <PageHeader
         title="Inscriptions"
-        description="Rattachement des étudiants à une filière et une année"
+        description="Rattachement des étudiants à un niveau, une filière et une année"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -94,8 +111,17 @@ export function EnrollmentsListPage() {
         <input
           value={recherche}
           onChange={(e) => setRecherche(e.target.value)}
-          placeholder="Rechercher inscription, étudiant, filière..."
+          placeholder="Rechercher inscription, étudiant, niveau, filière..."
           className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+      </div>
+
+      <div className="mb-4 grid max-w-2xl gap-3 sm:grid-cols-2">
+        <FiltresProgramme
+          niveauId={niveauFiltre}
+          filiereId={filiereFiltre}
+          onNiveauChange={setNiveauFiltre}
+          onFiliereChange={setFiliereFiltre}
         />
       </div>
 
@@ -116,7 +142,7 @@ export function EnrollmentsListPage() {
               <tr>
                 <th className="px-5 py-3">N° inscription</th>
                 <th className="px-5 py-3">Étudiant</th>
-                <th className="px-5 py-3">Filière</th>
+                <th className="px-5 py-3">Niveau – Filière</th>
                 <th className="px-5 py-3">Année</th>
                 <th className="px-5 py-3 text-right">Scolarité</th>
                 <th className="px-5 py-3 ">Montant Payé</th>
@@ -127,7 +153,7 @@ export function EnrollmentsListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {inscriptionsFiltres.map((inscription) => (
+              {page.pageItems.map((inscription) => (
                 <tr
                   key={inscription.id}
                   onClick={() => navigate(`/inscriptions/${inscription.id}`)}
@@ -139,7 +165,9 @@ export function EnrollmentsListPage() {
                   <td className="px-5 py-3 font-medium text-slate-900">
                     {inscription.etudiant.prenom} {inscription.etudiant.nom}
                   </td>
-                  <td className="px-5 py-3 text-slate-700">{inscription.filiere.libelle}</td>
+                  <td className="px-5 py-3 text-slate-700">
+                    {libelleProgramme(inscription.niveau, inscription.filiere)}
+                  </td>
                   <td className="px-5 py-3 text-slate-500">{inscription.anneeUniversitaire.libelle}</td>
                   <td className="px-5 py-3 text-right font-medium">
                     {formatMontant(inscription.montantTotalDu)}
@@ -179,6 +207,9 @@ export function EnrollmentsListPage() {
             </tbody>
           </table></div>
         )}
+        <div className="px-5 pb-4">
+          <Pagination p={page} />
+        </div>
       </Card>
     </div>
   );

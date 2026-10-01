@@ -19,7 +19,8 @@ export interface Paiement {
     id: string;
     numeroInscription: string;
     montantTotalDu: number | string;
-    filiere: { code: string; libelle: string };
+    niveau: { code: string; libelle: string };
+    filiere?: { code: string; libelle: string } | null;
     anneeUniversitaire?: { libelle: string };
     echeances?: Array<{
       id: string;
@@ -48,6 +49,9 @@ export async function fetchPaiements(params?: {
   etudiantId?: string;
   inscriptionId?: string;
   anneeUniversitaireId?: string;
+  niveauId?: string;
+  filiereId?: string;
+  modePaiement?: string;
 }): Promise<Paiement[]> {
   const { data } = await apiClient.get<Paiement[]>('/paiements', { params });
   return data;
@@ -66,4 +70,9 @@ export async function createPaiement(input: CreatePaiementInput): Promise<Paieme
 export async function annulerPaiement(id: string): Promise<Paiement> {
   const { data } = await apiClient.patch<Paiement>(`/paiements/${id}/annuler`);
   return data;
+}
+
+/** Suppression définitive (administrateur) ; libère le numéro de reçu. */
+export async function supprimerPaiement(id: string): Promise<void> {
+  await apiClient.delete(`/paiements/${id}`);
 }

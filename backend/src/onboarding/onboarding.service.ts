@@ -67,6 +67,7 @@ export class OnboardingService {
     const inscription = await this.enrollmentsService.create(
       {
         etudiantId: etudiant.id,
+        niveauId: dto.niveauId,
         filiereId: dto.filiereId,
         anneeUniversitaireId: dto.anneeUniversitaireId,
         dateInscription: dto.dateInscription,

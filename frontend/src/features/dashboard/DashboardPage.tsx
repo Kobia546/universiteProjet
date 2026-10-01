@@ -245,7 +245,7 @@ export function DashboardPage() {
 
             <Card>
               <h2 className="font-serif text-[15px] font-semibold text-slate-900">
-                Répartition par filière {libelleAnnee}
+                Répartition par niveau et filière {libelleAnnee}
               </h2>
               <div className="rule-perforee mb-4 mt-2" />
               {stats.repartitionParFiliere.length === 0 ? (

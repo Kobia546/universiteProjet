@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
@@ -185,7 +186,7 @@ export function NewPaymentPage() {
               <option value="">Sélectionner...</option>
               {etudiantDetail.inscriptions?.map((inscription) => (
                 <option key={inscription.id} value={inscription.id}>
-                  {inscription.filiere?.libelle} (
+                  {libelleProgramme(inscription.niveau, inscription.filiere)} (
                   {inscription.anneeUniversitaire?.libelle})
                 </option>
               ))}
@@ -200,7 +201,9 @@ export function NewPaymentPage() {
 
         {inscriptionPreselectionnee && inscriptionDetail && (
           <div className="rounded-lg border border-slate-100 px-3 py-2 text-sm text-slate-700">
-            Inscription : <span className="font-medium">{inscriptionDetail.filiere.libelle}</span>{' '}
+            Inscription : <span className="font-medium">
+              {libelleProgramme(inscriptionDetail.niveau, inscriptionDetail.filiere)}
+            </span>{' '}
             ({inscriptionDetail.anneeUniversitaire.libelle}) — N°{' '}
             {inscriptionDetail.numeroInscription}
           </div>

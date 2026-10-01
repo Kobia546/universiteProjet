@@ -85,7 +85,7 @@ export class DashboardService {
     ] = await Promise.all([
       this.prisma.inscription.findMany({
         where: { statut: { not: 'ANNULEE' }, ...filtreAnnee },
-        include: { filiere: true, etudiant: true, paiements: { where: { statut: 'VALIDE' } } },
+        include: { niveau: true, filiere: true, etudiant: true, paiements: { where: { statut: 'VALIDE' } } },
       }),
       this.prisma.ecritureRecette.findMany({
         where: {
@@ -151,7 +151,9 @@ export class DashboardService {
 
     const repartitionMap = new Map<string, number>();
     for (const inscription of inscriptionsAnnee) {
-      const libelle = inscription.filiere.libelle;
+      const libelle = inscription.filiere
+        ? `${inscription.niveau.libelle} – ${inscription.filiere.libelle}`
+        : inscription.niveau.libelle;
       repartitionMap.set(libelle, (repartitionMap.get(libelle) ?? 0) + 1);
     }
     const repartitionParFiliere = Array.from(repartitionMap.entries()).map(([filiere, total]) => ({

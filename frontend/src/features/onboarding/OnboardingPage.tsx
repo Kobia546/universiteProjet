@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ChoixNiveauFiliere } from '../../shared/components/ui/ChoixNiveauFiliere';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
 import { Input } from '../../shared/components/ui/Input';
-import { fetchFilieres, fetchAnneesUniversitaires } from '../programs/programsApi';
+import { fetchAnneesUniversitaires } from '../programs/programsApi';
 import { fetchReglesPaiement } from '../payment-rules/api/paymentRulesApi';
 import { fetchEtudiants, fetchEtudiant, updateEtudiant } from '../students/api/studentsApi';
 import { createOnboarding } from './api/onboardingApi';
@@ -79,6 +80,7 @@ export function OnboardingPage() {
 
   // Inscription
   const [anneeUniversitaireId, setAnneeUniversitaireId] = useState('');
+  const [niveauId, setNiveauId] = useState('');
   const [filiereId, setFiliereId] = useState('');
   const [dateInscription, setDateInscription] = useState(() =>
     new Date().toISOString().slice(0, 10),
@@ -97,7 +99,6 @@ export function OnboardingPage() {
     queryKey: ['annees-universitaires'],
     queryFn: fetchAnneesUniversitaires,
   });
-  const { data: filieres } = useQuery({ queryKey: ['filieres'], queryFn: fetchFilieres });
   const { data: regles } = useQuery({
     queryKey: ['regles-paiement', anneeUniversitaireId],
     queryFn: () => fetchReglesPaiement(anneeUniversitaireId),
@@ -111,34 +112,26 @@ export function OnboardingPage() {
     }
   }, [annees, anneeUniversitaireId]);
 
-  // Filières ouvertes pour l'année sélectionnée
-  const filieresOuvertes = useMemo(() => {
-    if (!anneeUniversitaireId || !filieres) return [];
-    return filieres.filter((f) =>
-      f.anneesOuvertes?.some((a) => a.anneeUniversitaireId === anneeUniversitaireId && a.actif),
-    );
-  }, [filieres, anneeUniversitaireId]);
-
   // Le type utilisé pour la suggestion de montant : celui de l'universitaire
   // existant sélectionné, ou celui choisi dans le formulaire du nouveau.
   const typeEffectif = mode === 'existant' ? etudiantSelectionne?.type ?? 'ETUDIANT' : type;
 
   // Suggestion du montant d'inscription, calculée côté client à partir des
   // règles de paiement déjà configurées (même logique de spécificité que le
-  // backend : filière+type > filière seule > type seul > générale).
+  // backend : niveau+type > niveau seul > type seul > générale).
   const regleApplicable = useMemo(() => {
-    if (!regles || !filiereId) return null;
+    if (!regles || !niveauId) return null;
     const candidates = regles.filter(
       (r) =>
-        (r.filiereId === filiereId || r.filiereId === null) &&
+        (r.niveauId === niveauId || r.niveauId === null) &&
         (r.type === typeEffectif || r.type === null),
     );
-    const score = (r: (typeof candidates)[number]) => (r.filiereId ? 2 : 0) + (r.type ? 1 : 0);
+    const score = (r: (typeof candidates)[number]) => (r.niveauId ? 2 : 0) + (r.type ? 1 : 0);
     candidates.sort((a, b) => score(b) - score(a));
     return candidates[0] ?? null;
-  }, [regles, filiereId, typeEffectif]);
+  }, [regles, niveauId, typeEffectif]);
 
-  // Scolarité totale de la filière/type sélectionnés — affichée dès que
+  // Scolarité totale du niveau/type sélectionnés — affichée dès que
   // les deux sont connus, indépendamment de la section paiement.
   const scolariteTotale = regleApplicable ? Number(regleApplicable.montantTotal) : null;
 
@@ -170,6 +163,7 @@ export function OnboardingPage() {
 
   const peutValider =
     (mode === 'existant' ? !!etudiantId : !!(nom && prenom)) &&
+    niveauId &&
     filiereId &&
     anneeUniversitaireId &&
     (!enregistrerPaiement ||
@@ -194,6 +188,7 @@ export function OnboardingPage() {
             email: email || undefined,
             adresse: adresse || undefined,
           }),
+      niveauId,
       filiereId,
       anneeUniversitaireId,
       dateInscription,
@@ -214,7 +209,7 @@ export function OnboardingPage() {
     <div className="mx-auto max-w-4xl">
       <PageHeader
         title="Nouvelle inscription"
-        description="Universitaire (nouveau ou existant), filière/année et premier paiement en une seule étape"
+        description="Universitaire (nouveau ou existant), niveau/filière/année et premier paiement en une seule étape"
       />
 
       <div className="space-y-6">
@@ -410,13 +405,14 @@ export function OnboardingPage() {
         {/* ---- Inscription ---- */}
         <Card className="p-6 sm:p-8">
           <h2 className="mb-4 font-serif text-[15px] font-semibold text-slate-900">Inscription</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-700">Année universitaire</label>
               <select
                 value={anneeUniversitaireId}
                 onChange={(e) => {
                   setAnneeUniversitaireId(e.target.value);
+                  setNiveauId('');
                   setFiliereId('');
                 }}
                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -429,31 +425,22 @@ export function OnboardingPage() {
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Filière</label>
-              <select
-                value={filiereId}
-                onChange={(e) => setFiliereId(e.target.value)}
-                disabled={!anneeUniversitaireId}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-50"
-              >
-                <option value="">
-                  {!anneeUniversitaireId
-                    ? "Choisir une année d'abord"
-                    : filieresOuvertes.length === 0
-                      ? 'Aucune filière ouverte pour cette année'
-                      : 'Sélectionner...'}
-                </option>
-                {filieresOuvertes.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.libelle}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
-          {filiereId && (
+          <div className="mt-4">
+            <ChoixNiveauFiliere
+              anneeUniversitaireId={anneeUniversitaireId}
+              niveauId={niveauId}
+              filiereId={filiereId}
+              onNiveauChange={(id) => {
+                setNiveauId(id);
+                setFiliereId('');
+              }}
+              onFiliereChange={setFiliereId}
+            />
+          </div>
+
+          {niveauId && (
             <div className="mt-4">
               {scolariteTotale !== null ? (
                 <div className="flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
@@ -466,7 +453,7 @@ export function OnboardingPage() {
                 </div>
               ) : (
                 <p className="text-xs text-amber-600">
-                  Aucune règle de paiement configurée pour cette filière/type/année — configure-la
+                  Aucune règle de paiement configurée pour ce niveau/type/année — configure-la
                   d'abord dans Paramètres → Règles de paiement.
                 </p>
               )}

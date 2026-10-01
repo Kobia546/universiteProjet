@@ -7,6 +7,8 @@ import { CreateEcheanceDto } from './dto/create-echeance.dto';
 import { UpdateEcheanceDto } from './dto/update-echeance.dto';
 import { EcheancesService } from './echeances.service';
 import { AuditService } from '../audit/audit.service';
+import { UpdateInscriptionDto } from './dto/update-inscription.dto';
+import { supprimerInscriptionsTx } from '../common/suppression';
 
 @Injectable()
 export class EnrollmentsService {
@@ -18,33 +20,43 @@ export class EnrollmentsService {
     private readonly auditService: AuditService,
   ) {}
 
+  private async verifierNiveauOuvert(niveauId: string, anneeUniversitaireId: string) {
+    const ouverture = await this.prisma.niveauAnnee.findUnique({
+      where: { niveauId_anneeUniversitaireId: { niveauId, anneeUniversitaireId } },
+    });
+    if (!ouverture || !ouverture.actif) {
+      throw new BadRequestException("Ce niveau n'est pas ouvert pour cette année universitaire.");
+    }
+  }
+
+  private async verifierFiliereActive(filiereId: string) {
+    const filiere = await this.prisma.filiere.findUnique({ where: { id: filiereId } });
+    if (!filiere) throw new NotFoundException('Filière introuvable');
+    if (!filiere.actif) {
+      throw new BadRequestException(`La filière « ${filiere.libelle} » n'est plus proposée.`);
+    }
+  }
+
   async create(dto: CreateInscriptionDto, agentId: string) {
-    const { etudiantId, filiereId, anneeUniversitaireId } = dto;
+    const { etudiantId, niveauId, filiereId, anneeUniversitaireId } = dto;
 
     const etudiant = await this.prisma.etudiant.findUnique({ where: { id: etudiantId } });
     if (!etudiant) throw new NotFoundException('Étudiant introuvable');
 
-    // 1. Vérifier que la filière est bien ouverte pour cette année
-    const filiereAnnee = await this.prisma.filiereAnnee.findUnique({
-      where: {
-        filiereId_anneeUniversitaireId: { filiereId, anneeUniversitaireId },
-      },
-    });
-    if (!filiereAnnee || !filiereAnnee.actif) {
-      throw new BadRequestException(
-        "Cette filière n'est pas ouverte pour cette année universitaire.",
-      );
-    }
+    // 1. Vérifier que le niveau est bien ouvert pour cette année
+    await this.verifierNiveauOuvert(niveauId, anneeUniversitaireId);
+    // ... et que la filière choisie existe et est active
+    await this.verifierFiliereActive(filiereId);
 
-    // 2. Résoudre la règle de paiement applicable (selon filière + type d'étudiant)
+    // 2. Résoudre la règle de paiement applicable (selon niveau + type d'étudiant)
     const regle = await this.paymentRulesService.resoudreRegleApplicable({
-      filiereId,
+      niveauId,
       type: etudiant.type,
       anneeUniversitaireId,
     });
     if (!regle) {
       throw new BadRequestException(
-        "Aucune règle de paiement n'est configurée pour cette filière/type d'étudiant/année. " +
+        "Aucune règle de paiement n'est configurée pour ce niveau/type d'étudiant/année. " +
           'Configurez-en une dans Paramètres avant de créer une inscription.',
       );
     }
@@ -101,6 +113,7 @@ export class EnrollmentsService {
       data: {
         numeroInscription,
         etudiantId,
+        niveauId,
         filiereId,
         anneeUniversitaireId,
         montantTotalDu: montantTotal,
@@ -111,6 +124,7 @@ export class EnrollmentsService {
       include: {
         echeances: true,
         etudiant: true,
+        niveau: true,
         filiere: true,
         anneeUniversitaire: true,
       },
@@ -142,16 +156,23 @@ export class EnrollmentsService {
     return misAJour;
   }
 
-  async findAll(params: { anneeUniversitaireId?: string; filiereId?: string; statut?: string }) {
-    const { anneeUniversitaireId, filiereId, statut } = params;
+  async findAll(params: {
+    anneeUniversitaireId?: string;
+    niveauId?: string;
+    filiereId?: string;
+    statut?: string;
+  }) {
+    const { anneeUniversitaireId, niveauId, filiereId, statut } = params;
     const inscriptions = await this.prisma.inscription.findMany({
       where: {
         ...(anneeUniversitaireId ? { anneeUniversitaireId } : {}),
+        ...(niveauId ? { niveauId } : {}),
         ...(filiereId ? { filiereId } : {}),
         ...(statut ? { statut: statut as any } : {}),
       },
       include: {
         etudiant: true,
+        niveau: true,
         filiere: true,
         anneeUniversitaire: true,
         paiements: { where: { statut: 'VALIDE' } },
@@ -173,6 +194,7 @@ export class EnrollmentsService {
       where: { id },
       include: {
         etudiant: true,
+        niveau: true,
         filiere: true,
         anneeUniversitaire: true,
         echeances: { orderBy: { numeroEcheance: 'asc' } },
@@ -284,5 +306,72 @@ export class EnrollmentsService {
     });
 
     return { supprime: true };
+  }
+
+  /**
+   * Correction administrateur : niveau, filière ou statut d'une inscription.
+   * Le montant dû et l'échéancier ne sont PAS recalculés (ils peuvent déjà
+   * avoir été ajustés / avoir reçu des paiements) : après un changement de
+   * niveau, ajuster l'échéancier si besoin.
+   */
+  async modifier(id: string, dto: UpdateInscriptionDto, agentId: string) {
+    const inscription = await this.prisma.inscription.findUnique({ where: { id } });
+    if (!inscription) throw new NotFoundException(`Inscription ${id} introuvable`);
+
+    if (dto.niveauId && dto.niveauId !== inscription.niveauId) {
+      await this.verifierNiveauOuvert(dto.niveauId, inscription.anneeUniversitaireId);
+    }
+    if (dto.filiereId && dto.filiereId !== inscription.filiereId) {
+      await this.verifierFiliereActive(dto.filiereId);
+    }
+
+    const misAJour = await this.prisma.inscription.update({
+      where: { id },
+      data: {
+        ...(dto.niveauId ? { niveauId: dto.niveauId } : {}),
+        ...(dto.filiereId ? { filiereId: dto.filiereId } : {}),
+        ...(dto.statut ? { statut: dto.statut } : {}),
+      },
+      include: { niveau: true, filiere: true },
+    });
+
+    await this.auditService.enregistrer({
+      userId: agentId,
+      action: 'modification_inscription',
+      ressourceType: 'inscription',
+      ressourceId: id,
+      details: {
+        avant: {
+          niveauId: inscription.niveauId,
+          filiereId: inscription.filiereId,
+          statut: inscription.statut,
+        },
+        apres: { ...dto },
+      },
+    });
+    return misAJour;
+  }
+
+  /** Suppression définitive (administrateur) : paiements, reçus et échéances inclus. */
+  async remove(id: string, agentId: string) {
+    const inscription = await this.prisma.inscription.findUnique({
+      where: { id },
+      include: { _count: { select: { paiements: true } } },
+    });
+    if (!inscription) throw new NotFoundException(`Inscription ${id} introuvable`);
+
+    await this.prisma.$transaction((tx) => supprimerInscriptionsTx(tx, [id]));
+
+    await this.auditService.enregistrer({
+      userId: agentId,
+      action: 'suppression_inscription',
+      ressourceType: 'inscription',
+      ressourceId: id,
+      details: {
+        numeroInscription: inscription.numeroInscription,
+        paiementsSupprimes: inscription._count.paiements,
+      },
+    });
+    return { id };
   }
 }

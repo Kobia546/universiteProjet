@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
@@ -6,8 +6,10 @@ import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
 import { Input } from '../../shared/components/ui/Input';
 import { fetchEtudiants, fetchEtudiant } from '../students/api/studentsApi';
-import { fetchFilieres, fetchAnneesUniversitaires } from '../programs/programsApi';
+import { fetchAnneesUniversitaires } from '../programs/programsApi';
 import { createInscription } from './api/enrollmentsApi';
+import { ChoixNiveauFiliere } from '../../shared/components/ui/ChoixNiveauFiliere';
+import { messageErreur } from '../../shared/lib/erreurs';
 
 export function NewEnrollmentPage() {
   const navigate = useNavigate();
@@ -17,6 +19,7 @@ export function NewEnrollmentPage() {
 
   const [recherche, setRecherche] = useState('');
   const [etudiantId, setEtudiantId] = useState(etudiantPreselectionne);
+  const [niveauId, setNiveauId] = useState('');
   const [filiereId, setFiliereId] = useState('');
   const [anneeUniversitaireId, setAnneeUniversitaireId] = useState('');
 
@@ -30,7 +33,6 @@ export function NewEnrollmentPage() {
     queryFn: () => fetchEtudiant(etudiantPreselectionne),
     enabled: !!etudiantPreselectionne,
   });
-  const { data: filieres } = useQuery({ queryKey: ['filieres'], queryFn: fetchFilieres });
   const { data: annees } = useQuery({
     queryKey: ['annees-universitaires'],
     queryFn: fetchAnneesUniversitaires,
@@ -46,14 +48,6 @@ export function NewEnrollmentPage() {
 
   const etudiantSelectionne = etudiantPreselectionneDetail ?? etudiants?.find((e) => e.id === etudiantId);
 
-  // Filières ouvertes pour l'année sélectionnée
-  const filieresOuvertes = useMemo(() => {
-    if (!anneeUniversitaireId || !filieres) return [];
-    return filieres.filter((f) =>
-      f.anneesOuvertes?.some((a) => a.anneeUniversitaireId === anneeUniversitaireId && a.actif),
-    );
-  }, [filieres, anneeUniversitaireId]);
-
   const mutation = useMutation({
     mutationFn: createInscription,
     onSuccess: (inscription) => {
@@ -62,13 +56,13 @@ export function NewEnrollmentPage() {
     },
   });
 
-  const peutValider = etudiantId && filiereId && anneeUniversitaireId;
+  const peutValider = etudiantId && niveauId && filiereId && anneeUniversitaireId;
 
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
         title="Nouvelle inscription"
-        description="Rattacher un étudiant existant à une filière et une année universitaire"
+        description="Rattacher un étudiant existant à un niveau, une filière et une année universitaire"
       />
 
       <Card className="space-y-6">
@@ -130,6 +124,7 @@ export function NewEnrollmentPage() {
             value={anneeUniversitaireId}
             onChange={(e) => {
               setAnneeUniversitaireId(e.target.value);
+              setNiveauId('');
               setFiliereId('');
             }}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -143,40 +138,21 @@ export function NewEnrollmentPage() {
           </select>
         </div>
 
-        {/* Filière (= niveau), filtrée sur les filières ouvertes */}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Filière</label>
-          <select
-            value={filiereId}
-            onChange={(e) => setFiliereId(e.target.value)}
-            disabled={!anneeUniversitaireId}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-50"
-          >
-            <option value="">
-              {!anneeUniversitaireId
-                ? "Choisir une année d'abord"
-                : filieresOuvertes.length === 0
-                  ? 'Aucune filière ouverte pour cette année'
-                  : 'Sélectionner...'}
-            </option>
-            {filieresOuvertes.map((filiere) => (
-              <option key={filiere.id} value={filiere.id}>
-                {filiere.libelle}
-              </option>
-            ))}
-          </select>
-          {filieres && filieresOuvertes.length === 0 && anneeUniversitaireId && (
-            <p className="mt-1 text-xs text-amber-600">
-              Aucune filière n'est ouverte pour cette année — ouvrez-en une dans Paramètres →
-              Filières.
-            </p>
-          )}
-        </div>
+        {/* Niveau d'abord, puis filière (spécialité) */}
+        <ChoixNiveauFiliere
+          anneeUniversitaireId={anneeUniversitaireId}
+          niveauId={niveauId}
+          filiereId={filiereId}
+          onNiveauChange={setNiveauId}
+          onFiliereChange={setFiliereId}
+        />
 
         {mutation.isError && (
           <p className="text-sm text-red-600">
-            {(mutation.error as any)?.response?.data?.message ||
-              "Une erreur est survenue. Vérifiez qu'une règle de paiement est configurée pour cette filière/type/année."}
+            {messageErreur(
+              mutation.error,
+              "Une erreur est survenue. Vérifiez qu'une règle de paiement est configurée pour ce niveau/type/année.",
+            )}
           </p>
         )}
 
@@ -188,7 +164,7 @@ export function NewEnrollmentPage() {
             type="button"
             disabled={!peutValider}
             isLoading={mutation.isPending}
-            onClick={() => mutation.mutate({ etudiantId, filiereId, anneeUniversitaireId })}
+            onClick={() => mutation.mutate({ etudiantId, niveauId, filiereId, anneeUniversitaireId })}
           >
             Créer l'inscription
           </Button>

@@ -5,7 +5,10 @@ import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
 import { fetchInscriptions } from '../enrollments/api/enrollmentsApi';
-import { fetchFilieres, fetchAnneesUniversitaires } from '../programs/programsApi';
+import { fetchFilieres, fetchNiveaux, fetchAnneesUniversitaires } from '../programs/programsApi';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { fetchEtudiantsParStatutPaiement } from '../students/api/studentsApi';
 import { fetchEp703, fetchEp704, fetchEp706 } from '../accounting/api/accountingApi';
 import { formatDate, formatMontantPdf } from '../../shared/lib/format';
@@ -26,6 +29,7 @@ export function EditionsPage() {
   // Filtres centralisés — utilisés par les quatre exports ci-dessous,
   // chacun n'utilisant que ceux qui le concernent (pas de champs dupliqués).
   const [anneeUniversitaireId, setAnneeUniversitaireId] = useState('');
+  const [niveauId, setNiveauId] = useState('');
   const [filiereId, setFiliereId] = useState('');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
@@ -42,25 +46,29 @@ export function EditionsPage() {
     queryKey: ['annees-universitaires'],
     queryFn: fetchAnneesUniversitaires,
   });
-  const { data: filieres } = useQuery({ queryKey: ['filieres'], queryFn: fetchFilieres });
+  const { data: filieres } = useQuery({ queryKey: ['filieres'], queryFn: () => fetchFilieres() });
+  const { data: niveaux } = useQuery({ queryKey: ['niveaux'], queryFn: fetchNiveaux });
 
   const annee = annees?.find((a) => a.id === anneeUniversitaireId);
   const filiere = filieres?.find((f) => f.id === filiereId);
+  const niveau = niveaux?.find((n) => n.id === niveauId);
+  const portee = [niveau?.libelle, filiere?.libelle].filter(Boolean).join(' – ') || 'Tous niveaux et filières';
 
   async function preparerUniversitaires(): Promise<DocumentEdition> {
     const inscriptions = await fetchInscriptions({
       anneeUniversitaireId: anneeUniversitaireId || undefined,
+      niveauId: niveauId || undefined,
       filiereId: filiereId || undefined,
     });
     return {
-      titre: 'Liste des universitaires par filière et période',
-      sousTitre: `${filiere?.libelle ?? 'Toutes filières'} — ${annee?.libelle ?? 'Toutes années'} — ${inscriptions.length} universitaire(s)`,
-      colonnes: ['Matricule', 'Nom', 'Prénom', 'Filière', 'Année', 'Montant dû'],
+      titre: 'Liste des universitaires par niveau, filière et période',
+      sousTitre: `${portee} — ${annee?.libelle ?? 'Toutes années'} — ${inscriptions.length} universitaire(s)`,
+      colonnes: ['Matricule', 'Nom', 'Prénom', 'Niveau – Filière', 'Année', 'Montant dû'],
       lignes: inscriptions.map((i) => [
         i.etudiant.matricule,
         i.etudiant.nom,
         i.etudiant.prenom,
-        i.filiere.libelle,
+        libelleProgramme(i.niveau, i.filiere),
         i.anneeUniversitaire.libelle,
         formatMontantPdf(i.montantTotalDu),
       ]),
@@ -69,15 +77,22 @@ export function EditionsPage() {
   }
 
   async function preparerNonSoldes(): Promise<DocumentEdition> {
-    const etudiants = await fetchEtudiantsParStatutPaiement('doit', anneeUniversitaireId || undefined);
+    const etudiants = await fetchEtudiantsParStatutPaiement('doit', {
+      anneeUniversitaireId: anneeUniversitaireId || undefined,
+      niveauId: niveauId || undefined,
+      filiereId: filiereId || undefined,
+    });
     return {
       titre: "Liste des universitaires n'ayant pas encore soldé",
-      sousTitre: `${annee?.libelle ?? 'Année active'} — ${etudiants.length} universitaire(s)`,
-      colonnes: ['Matricule', 'Nom', 'Prénom', 'Total dû', 'Total payé', 'Reste à payer'],
+      sousTitre: `${annee?.libelle ?? 'Année active'} — ${portee} — ${etudiants.length} universitaire(s)`,
+      colonnes: ['Matricule', 'Nom', 'Prénom', 'Niveau – Filière', 'Total dû', 'Total payé', 'Reste à payer'],
       lignes: etudiants.map((e) => [
         e.matricule,
         e.nom,
         e.prenom,
+        e.inscriptions
+          .map((i) => (i.filiereLibelle ? `${i.niveau} – ${i.filiereLibelle}` : i.niveau))
+          .join(' ; '),
         formatMontantPdf(e.totalDu),
         formatMontantPdf(e.totalPaye),
         formatMontantPdf(e.resteAPayer),
@@ -193,13 +208,13 @@ export function EditionsPage() {
   const documents: { id: IdDocument; titre: string; description: string }[] = [
     {
       id: 'universitaires',
-      titre: "Liste des universitaires d'une filière, d'une période",
-      description: 'Utilise les filtres Année et Filière ci-dessus.',
+      titre: "Liste des universitaires d'un niveau / d'une filière, d'une période",
+      description: 'Utilise les filtres Année, Niveau et Filière ci-dessus.',
     },
     {
       id: 'non-soldes',
       titre: "Liste des universitaires n'ayant pas encore soldé",
-      description: 'Utilise le filtre Année ci-dessus (année active si vide).',
+      description: 'Utilise les filtres Année, Niveau et Filière ci-dessus (année active si Année est vide).',
     },
     {
       id: 'operations',
@@ -225,10 +240,10 @@ export function EditionsPage() {
         <h2 className="mb-1 font-serif text-[15px] font-semibold text-slate-900">Filtres</h2>
         <p className="mb-4 text-xs text-slate-500">
           Chaque document ci-dessous n'utilise que les filtres qui le concernent (laisse-les vides
-          pour "toutes années" / "toutes filières" / "depuis le début"). Change un filtre pour
+          pour "toutes années" / "tous niveaux" / "toutes filières" / "depuis le début"). Change un filtre pour
           rafraîchir l'aperçu déjà ouvert.
         </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Année universitaire</label>
             <select
@@ -249,12 +264,32 @@ export function EditionsPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Niveau</label>
+            <select
+              value={niveauId}
+              onChange={(e) => {
+                setNiveauId(e.target.value);
+                reinitialiserApercu('universitaires');
+                reinitialiserApercu('non-soldes');
+              }}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="">Tous les niveaux</option>
+              {niveaux?.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.libelle}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Filière</label>
             <select
               value={filiereId}
               onChange={(e) => {
                 setFiliereId(e.target.value);
                 reinitialiserApercu('universitaires');
+                reinitialiserApercu('non-soldes');
               }}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
@@ -335,30 +370,7 @@ export function EditionsPage() {
                         Aucune donnée pour cette sélection.
                       </p>
                     ) : (
-                      <div className="max-h-80 overflow-auto rounded-lg border border-slate-200 bg-white">
-                        <table className="w-full min-w-[480px] text-sm">
-                          <thead className="sticky top-0 border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
-                            <tr>
-                              {donneesParDocument[doc.id]!.colonnes.map((col) => (
-                                <th key={col} className="px-3 py-2">
-                                  {col}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {donneesParDocument[doc.id]!.lignes.map((ligne, i) => (
-                              <tr key={i}>
-                                {ligne.map((cellule, j) => (
-                                  <td key={j} className="px-3 py-2 text-slate-700">
-                                    {cellule}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <TableauApercu doc={donneesParDocument[doc.id]!} />
                     )}
                     {donneesParDocument[doc.id]!.pied && (
                       <p className="mt-3 text-right text-sm font-semibold text-slate-900">
@@ -382,6 +394,40 @@ export function EditionsPage() {
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Aperçu tabulaire d'un document, paginé par 15 lignes (l'export PDF contient tout). */
+function TableauApercu({ doc }: { doc: DocumentEdition }) {
+  const page = usePagination(doc.lignes, doc.titre + doc.sousTitre);
+  return (
+    <div>
+      <div className="overflow-auto rounded-lg border border-slate-200 bg-white">
+        <table className="w-full min-w-[480px] text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
+            <tr>
+              {doc.colonnes.map((col) => (
+                <th key={col} className="px-3 py-2">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {page.pageItems.map((ligne, i) => (
+              <tr key={i}>
+                {ligne.map((cellule, j) => (
+                  <td key={j} className="px-3 py-2 text-slate-700">
+                    {cellule}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Pagination p={page} />
     </div>
   );
 }

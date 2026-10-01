@@ -4,7 +4,7 @@ import { TypeEtudiant } from '@prisma/client';
 export class CreateReglePaiementDto {
   @IsOptional()
   @IsString()
-  filiereId?: string; // absent = règle générale (s'applique à toutes les filières)
+  niveauId?: string; // absent = règle générale (s'applique à tous les niveaux)
 
   @IsOptional()
   @IsEnum(TypeEtudiant, { message: 'Le type doit être ETUDIANT ou TRAVAILLEUR' })

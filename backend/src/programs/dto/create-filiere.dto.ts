@@ -2,12 +2,12 @@ import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateFiliereDto {
   @IsString()
-  @MinLength(2)
-  nom: string;
+  @MinLength(1)
+  code: string;
 
   @IsString()
   @MinLength(2)
-  code: string;
+  libelle: string;
 
   @IsOptional()
   @IsBoolean()

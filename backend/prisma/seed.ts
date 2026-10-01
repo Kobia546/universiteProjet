@@ -36,26 +36,42 @@ async function main() {
     create: {
       nom: 'Visiteur',
       description: 'Accès restreint, à personnaliser selon les besoins.',
-      modules: [ModuleCode.TABLEAU_DE_BORD, ModuleCode.ADMINISTRATION],
+      modules: [ModuleCode.TABLEAU_DE_BORD],
     },
   });
 
-  // ---- Filières (= niveaux, référentiel fixe) ----
-  const filieresData = [
+  // ---- Niveaux (référentiel fixe) ----
+  const niveauxData = [
     { code: 'L1', libelle: 'Licence 1' },
     { code: 'L2', libelle: 'Licence 2' },
     { code: 'L3', libelle: 'Licence 3' },
     { code: 'M1', libelle: 'Master 1' },
     { code: 'M2', libelle: 'Master 2' },
   ];
-  const filieres = [];
+  const niveaux = [];
+  for (const n of niveauxData) {
+    const niveau = await prisma.niveau.upsert({
+      where: { code: n.code },
+      update: {},
+      create: n,
+    });
+    niveaux.push(niveau);
+  }
+
+  // ---- Filières (spécialités choisies à l'inscription, après le niveau) ----
+  const filieresData = [
+    { id: 'filiere-dh', code: 'DH', libelle: "Droit de l'Homme" },
+    { id: 'filiere-da', code: 'DA', libelle: 'Droit des Affaires' },
+    { id: 'filiere-dc', code: 'DC', libelle: 'Droit des Contentieux' },
+    { id: 'filiere-fe', code: 'FE', libelle: 'Fiscalité des Entreprises' },
+    { id: 'filiere-de', code: 'DE', libelle: "Droit de l'Environnement" },
+  ];
   for (const f of filieresData) {
-    const filiere = await prisma.filiere.upsert({
+    await prisma.filiere.upsert({
       where: { code: f.code },
       update: {},
-      create: f,
+      create: { ...f, actif: true },
     });
-    filieres.push(filiere);
   }
 
   // ---- Année universitaire courante ----
@@ -71,47 +87,25 @@ async function main() {
     },
   });
 
-  // ---- Ouvrir toutes les filières pour l'année courante ----
-  for (const filiere of filieres) {
-    await prisma.filiereAnnee.upsert({
+  // ---- Ouvrir tous les niveaux pour l'année courante ----
+  for (const niveau of niveaux) {
+    await prisma.niveauAnnee.upsert({
       where: {
-        filiereId_anneeUniversitaireId: {
-          filiereId: filiere.id,
+        niveauId_anneeUniversitaireId: {
+          niveauId: niveau.id,
           anneeUniversitaireId: annee.id,
         },
       },
       update: {},
-      create: { filiereId: filiere.id, anneeUniversitaireId: annee.id, actif: true },
+      create: { niveauId: niveau.id, anneeUniversitaireId: annee.id, actif: true },
     });
   }
 
-  // ---- Matières (catalogue), rattachées à toutes les filières ----
-  const matieresData = [
-    { nom: "Droit de l'Homme", code: 'DH' },
-    { nom: 'Droit des Affaires', code: 'DA' },
-    { nom: 'Droit des Contentieux', code: 'DC' },
-    { nom: 'Fiscalité des Entreprises', code: 'FE' },
-  ];
-  for (const m of matieresData) {
-    const matiere = await prisma.matiere.upsert({
-      where: { code: m.code },
-      update: { actif: true },
-      create: { ...m, actif: true },
-    });
-    for (const filiere of filieres) {
-      await prisma.filiereMatiere.upsert({
-        where: { filiereId_matiereId: { filiereId: filiere.id, matiereId: matiere.id } },
-        update: {},
-        create: { filiereId: filiere.id, matiereId: matiere.id },
-      });
-    }
-  }
-
-  // ---- Scolarité par filière et par type (étudiant/travailleur) ----
+  // ---- Scolarité par niveau et par type (étudiant/travailleur) ----
   // Ces montants sont propres à l'année 2025-2026 — chaque nouvelle année
   // universitaire aura ses propres règles, modifiables indépendamment
   // (historique conservé, rien n'écrase les années précédentes).
-  const scolariteParFiliere: Record<string, { etudiant: number; travailleur: number }> = {
+  const scolariteParNiveau: Record<string, { etudiant: number; travailleur: number }> = {
     L1: { etudiant: 100000, travailleur: 150000 },
     L2: { etudiant: 175000, travailleur: 200000 },
     L3: { etudiant: 320000, travailleur: 380000 },
@@ -119,16 +113,16 @@ async function main() {
     M2: { etudiant: 900000, travailleur: 1500000 },
   };
 
-  for (const filiere of filieres) {
-    const montants = scolariteParFiliere[filiere.code];
+  for (const niveau of niveaux) {
+    const montants = scolariteParNiveau[niveau.code];
     if (!montants) continue;
 
     await prisma.reglePaiement.upsert({
-      where: { id: `seed-regle-${filiere.code}-etudiant-2025-2026` },
+      where: { id: `seed-regle-${niveau.code}-etudiant-2025-2026` },
       update: { montantTotal: montants.etudiant },
       create: {
-        id: `seed-regle-${filiere.code}-etudiant-2025-2026`,
-        filiereId: filiere.id,
+        id: `seed-regle-${niveau.code}-etudiant-2025-2026`,
+        niveauId: niveau.id,
         type: 'ETUDIANT',
         anneeUniversitaireId: annee.id,
         montantTotal: montants.etudiant,
@@ -138,11 +132,11 @@ async function main() {
     });
 
     await prisma.reglePaiement.upsert({
-      where: { id: `seed-regle-${filiere.code}-travailleur-2025-2026` },
+      where: { id: `seed-regle-${niveau.code}-travailleur-2025-2026` },
       update: { montantTotal: montants.travailleur },
       create: {
-        id: `seed-regle-${filiere.code}-travailleur-2025-2026`,
-        filiereId: filiere.id,
+        id: `seed-regle-${niveau.code}-travailleur-2025-2026`,
+        niveauId: niveau.id,
         type: 'TRAVAILLEUR',
         anneeUniversitaireId: annee.id,
         montantTotal: montants.travailleur,

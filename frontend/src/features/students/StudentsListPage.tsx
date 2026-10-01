@@ -7,6 +7,10 @@ import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { FiltresProgramme } from '../../shared/components/ui/FiltresProgramme';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { libelleProgramme } from '../../shared/lib/programme';
 import { fetchEtudiants, createEtudiant, fetchEtudiantsParStatutPaiement } from './api/studentsApi';
 import { fetchAnneesUniversitaires } from '../programs/programsApi';
 import { formatDate, formatDateHeure, formatMontant, formatMontantPdf } from '../../shared/lib/format';
@@ -30,6 +34,8 @@ export function StudentsListPage() {
   const [onglet, setOnglet] = useState<Onglet>('tous');
   const [anneeFiltre, setAnneeFiltre] = useState('');
   const [recherche, setRecherche] = useState('');
+  const [niveauFiltre, setNiveauFiltre] = useState('');
+  const [filiereFiltre, setFiliereFiltre] = useState('');
   const [importEnCours, setImportEnCours] = useState(false);
   const [resultatImport, setResultatImport] = useState<string | null>(null);
   const fichierInputRef = useRef<HTMLInputElement>(null);
@@ -37,9 +43,14 @@ export function StudentsListPage() {
   const queryClient = useQueryClient();
 
   const { data: etudiants, isLoading } = useQuery({
-    queryKey: ['etudiants', recherche, anneeFiltre],
+    queryKey: ['etudiants', recherche, anneeFiltre, niveauFiltre, filiereFiltre],
     queryFn: () =>
-      fetchEtudiants({ recherche: recherche || undefined, anneeUniversitaireId: anneeFiltre || undefined }),
+      fetchEtudiants({
+        recherche: recherche || undefined,
+        anneeUniversitaireId: anneeFiltre || undefined,
+        niveauId: niveauFiltre || undefined,
+        filiereId: filiereFiltre || undefined,
+      }),
     enabled: onglet === 'tous',
   });
 
@@ -56,11 +67,19 @@ export function StudentsListPage() {
   }, [annees, anneeFiltre]);
 
   const { data: etudiantsStatut, isLoading: isLoadingStatut } = useQuery({
-    queryKey: ['etudiants-statut-paiement', onglet, anneeFiltre],
+    queryKey: ['etudiants-statut-paiement', onglet, anneeFiltre, niveauFiltre, filiereFiltre],
     queryFn: () =>
-      fetchEtudiantsParStatutPaiement(onglet as 'doit' | 'solde', anneeFiltre || undefined),
+      fetchEtudiantsParStatutPaiement(onglet as 'doit' | 'solde', {
+        anneeUniversitaireId: anneeFiltre || undefined,
+        niveauId: niveauFiltre || undefined,
+        filiereId: filiereFiltre || undefined,
+      }),
     enabled: onglet === 'doit' || onglet === 'solde',
   });
+
+  const cleFiltres = `${onglet}|${recherche}|${anneeFiltre}|${niveauFiltre}|${filiereFiltre}`;
+  const pageTous = usePagination(etudiants ?? [], cleFiltres);
+  const pageStatut = usePagination(etudiantsStatut ?? [], cleFiltres);
 
   const importerMutation = useMutation({
     mutationFn: async (lignes: LigneCsv[]) => {
@@ -115,17 +134,22 @@ export function StudentsListPage() {
     e.target.value = '';
   }
 
+  function progStatut(i: { niveau: string; filiere: string | null; filiereLibelle: string | null }) {
+    return i.filiereLibelle ? `${i.niveau} – ${i.filiereLibelle}` : i.niveau;
+  }
+
   function exporter() {
     if (onglet === 'tous') {
       if (!etudiants || etudiants.length === 0) return;
       exporterPdf({
         titre: 'Liste des étudiants',
         sousTitre: `${etudiants.length} étudiant(s) — export du ${formatDate(new Date().toISOString())}`,
-        colonnes: ['Matricule', 'Nom', 'Prénom', 'Type', 'Téléphone', 'Statut paiement', 'Saisi le', 'Inscrit le'],
+        colonnes: ['Matricule', 'Nom', 'Prénom', 'Niveau – Filière', 'Type', 'Téléphone', 'Statut paiement', 'Saisi le', 'Inscrit le'],
         lignes: etudiants.map((e) => [
           e.matricule,
           e.nom,
           e.prenom,
+          (e.programmes ?? []).map((p) => libelleProgramme(p.niveau, p.filiere)).join(' ; ') || '—',
           e.type === 'TRAVAILLEUR' ? 'Travailleur' : 'Étudiant',
           e.telephone || '—',
           e.statutPaiement === 'SOLDE'
@@ -143,11 +167,12 @@ export function StudentsListPage() {
       exporterPdf({
         titre: onglet === 'doit' ? 'Étudiants ayant un solde restant' : 'Étudiants ayant soldé',
         sousTitre: `${etudiantsStatut.length} étudiant(s) — export du ${formatDate(new Date().toISOString())}`,
-        colonnes: ['Matricule', 'Nom', 'Prénom', 'Total dû', 'Total payé', 'Reste à payer'],
+        colonnes: ['Matricule', 'Nom', 'Prénom', 'Niveau – Filière', 'Total dû', 'Total payé', 'Reste à payer'],
         lignes: etudiantsStatut.map((e) => [
           e.matricule,
           e.nom,
           e.prenom,
+          e.inscriptions.map((i) => progStatut(i)).join(' ; ') || '—',
           formatMontantPdf(e.totalDu),
           formatMontantPdf(e.totalPaye),
           formatMontantPdf(e.resteAPayer),
@@ -218,6 +243,15 @@ export function StudentsListPage() {
         </p>
       </details>
 
+      <div className="mb-4 grid max-w-2xl gap-3 sm:grid-cols-2">
+        <FiltresProgramme
+          niveauId={niveauFiltre}
+          filiereId={filiereFiltre}
+          onNiveauChange={setNiveauFiltre}
+          onFiliereChange={setFiliereFiltre}
+        />
+      </div>
+
       <div className="mb-4 flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 w-fit">
         {(
           [
@@ -266,6 +300,7 @@ export function StudentsListPage() {
                   <th className="px-5 py-3">Matricule</th>
                   <th className="px-5 py-3">Nom</th>
                   <th className="px-5 py-3">Prénom</th>
+                  <th className="px-5 py-3">Niveau – Filière</th>
                   <th className="px-5 py-3">Type</th>
                   <th className="px-5 py-3">Téléphone</th>
                   <th className="px-5 py-3">Statut paiement</th>
@@ -274,7 +309,7 @@ export function StudentsListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {etudiants.map((etudiant) => (
+                {pageTous.pageItems.map((etudiant) => (
                   <tr
                     key={etudiant.id}
                     onClick={() => navigate(`/etudiants/${etudiant.id}`)}
@@ -283,6 +318,13 @@ export function StudentsListPage() {
                     <td className="px-5 py-3 font-mono text-xs text-slate-600">{etudiant.matricule}</td>
                     <td className="px-5 py-3 font-medium text-slate-900">{etudiant.nom}</td>
                     <td className="px-5 py-3 text-slate-700">{etudiant.prenom}</td>
+                    <td className="px-5 py-3 text-xs text-slate-600">
+                      {etudiant.programmes && etudiant.programmes.length > 0
+                        ? etudiant.programmes.map((p, idx) => (
+                            <div key={idx}>{libelleProgramme(p.niveau, p.filiere)}</div>
+                          ))
+                        : '—'}
+                    </td>
                     <td className="px-5 py-3">
                       <Badge variant={etudiant.type === 'TRAVAILLEUR' ? 'info' : 'default'}>
                         {etudiant.type === 'TRAVAILLEUR' ? 'Travailleur' : 'Étudiant'}
@@ -312,6 +354,9 @@ export function StudentsListPage() {
               </tbody>
             </table></div>
           )}
+          <div className="px-5 pb-4">
+            <Pagination p={pageTous} />
+          </div>
         </Card>
       ) : (
         <Card className="overflow-hidden p-0">
@@ -327,14 +372,14 @@ export function StudentsListPage() {
                 <tr>
                   <th className="px-5 py-3">Matricule</th>
                   <th className="px-5 py-3">Nom</th>
-                  <th className="px-5 py-3">Filière(s)</th>
+                  <th className="px-5 py-3">Niveau – Filière</th>
                   <th className="px-5 py-3 text-right">Total dû</th>
                   <th className="px-5 py-3 text-right">Total payé</th>
                   <th className="px-5 py-3 text-right">Reste à payer</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {etudiantsStatut.map((e) => (
+                {pageStatut.pageItems.map((e) => (
                   <tr
                     key={e.id}
                     onClick={() => navigate(`/etudiants/${e.id}`)}
@@ -345,7 +390,7 @@ export function StudentsListPage() {
                       {e.prenom} {e.nom}
                     </td>
                     <td className="px-5 py-3 text-xs text-slate-500">
-                      {e.inscriptions.map((i) => i.filiere).join(', ')}
+                      {e.inscriptions.map((i) => progStatut(i)).join(', ')}
                     </td>
                     <td className="px-5 py-3 text-right">{formatMontant(e.totalDu)}</td>
                     <td className="px-5 py-3 text-right">{formatMontant(e.totalPaye)}</td>
@@ -361,6 +406,9 @@ export function StudentsListPage() {
               </tbody>
             </table></div>
           )}
+          <div className="px-5 pb-4">
+            <Pagination p={pageStatut} />
+          </div>
         </Card>
       )}
     </div>

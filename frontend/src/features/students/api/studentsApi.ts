@@ -1,8 +1,13 @@
 import { apiClient } from '../../../shared/lib/apiClient';
 import type { CreateEtudiantInput, Etudiant, EtudiantStatutPaiement } from '../types';
 
+function cleanParams(p?: Record<string, string | undefined>) {
+  return Object.fromEntries(Object.entries(p ?? {}).filter(([, v]) => !!v));
+}
+
 export async function fetchEtudiants(params?: {
   recherche?: string;
+  niveauId?: string;
   filiereId?: string;
   anneeUniversitaireId?: string;
 }): Promise<Etudiant[]> {
@@ -14,10 +19,10 @@ export async function fetchEtudiants(params?: {
 
 export async function fetchEtudiantsParStatutPaiement(
   statut: 'doit' | 'solde',
-  anneeUniversitaireId?: string,
+  filtres?: { anneeUniversitaireId?: string; niveauId?: string; filiereId?: string },
 ): Promise<EtudiantStatutPaiement[]> {
   const { data } = await apiClient.get<EtudiantStatutPaiement[]>('/etudiants/statut-paiement', {
-    params: anneeUniversitaireId ? { statut, anneeUniversitaireId } : { statut },
+    params: { statut, ...cleanParams(filtres) },
   });
   return data;
 }
@@ -38,4 +43,9 @@ export async function updateEtudiant(
 ): Promise<Etudiant> {
   const { data } = await apiClient.patch<Etudiant>(`/etudiants/${id}`, input);
   return data;
+}
+
+/** Suppression définitive (administrateur) : tout le dossier de l'étudiant. */
+export async function supprimerEtudiant(id: string): Promise<void> {
+  await apiClient.delete(`/etudiants/${id}`);
 }

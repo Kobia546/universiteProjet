@@ -23,6 +23,11 @@ export interface Etudiant {
   // Date d'inscription (carnet) correspondant à l'année filtrée, si une
   // année a été précisée dans la recherche — sinon absente/null.
   dateInscription?: string | null;
+  // Programmes (niveau + filière) de l'étudiant — présent sur la liste
+  programmes?: Array<{
+    niveau: { code: string; libelle: string };
+    filiere: { code: string; libelle: string } | null;
+  }>;
   // Présents uniquement sur la vue détail (GET /etudiants/:id)
   inscriptions?: Array<{
     id: string;
@@ -31,7 +36,8 @@ export interface Etudiant {
     montantTotalDu?: number | string;
     totalPaye?: number;
     resteAPayer?: number;
-    filiere?: { id: string; code: string; libelle: string };
+    niveau?: { id: string; code: string; libelle: string };
+    filiere?: { id: string; code: string; libelle: string } | null;
     anneeUniversitaire?: { id: string; libelle: string };
   }>;
   paiements?: Array<{
@@ -44,7 +50,8 @@ export interface Etudiant {
     montant: number | string;
     statut?: 'VALIDE' | 'ANNULE';
     inscription?: {
-      filiere?: { code: string; libelle: string };
+      niveau?: { code: string; libelle: string };
+      filiere?: { code: string; libelle: string } | null;
       anneeUniversitaire?: { libelle: string };
     };
   }>;
@@ -69,7 +76,12 @@ export interface EtudiantStatutPaiement {
   nom: string;
   prenom: string;
   telephone?: string | null;
-  inscriptions: Array<{ filiere: string; anneeUniversitaire: string }>;
+  inscriptions: Array<{
+    niveau: string;
+    filiere: string | null;
+    filiereLibelle: string | null;
+    anneeUniversitaire: string;
+  }>;
   totalDu: number;
   totalPaye: number;
   resteAPayer: number;
