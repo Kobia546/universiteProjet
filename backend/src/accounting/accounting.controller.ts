@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ModuleCode } from '@prisma/client';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { AccountingService } from './accounting.service';
 import { CreateDepenseDto } from './dto/create-depense.dto';
 import { CreateRecetteManuelleDto } from './dto/create-recette-manuelle.dto';
@@ -39,6 +41,12 @@ export class AccountingController {
     return this.accountingService.contrePasserRecette(id, user.userId);
   }
 
+  @Delete('ep703/:id')
+  @RequireModule(ModuleCode.ADMINISTRATION)
+  supprimerRecette(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.accountingService.supprimerRecette(id, user.userId);
+  }
+
   // ---- EP704 ----
 
   @Get('ep704')
@@ -54,6 +62,12 @@ export class AccountingController {
   @Patch('ep704/:id/contre-passer')
   contrePasserDepense(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
     return this.accountingService.contrePasserDepense(id, user.userId);
+  }
+
+  @Delete('ep704/:id')
+  @RequireModule(ModuleCode.ADMINISTRATION)
+  supprimerDepense(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.accountingService.supprimerDepense(id, user.userId);
   }
 
   // ---- EP706 ----

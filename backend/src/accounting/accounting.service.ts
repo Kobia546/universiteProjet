@@ -96,6 +96,25 @@ export class AccountingService {
     return misAJour;
   }
 
+  /** Suppression définitive d'une écriture de recette (administrateur). */
+  async supprimerRecette(id: string, agentId: string) {
+    const recette = await this.prisma.ecritureRecette.findUnique({ where: { id } });
+    if (!recette) throw new NotFoundException(`Écriture recette ${id} introuvable`);
+    await this.prisma.ecritureRecette.delete({ where: { id } });
+    await this.auditService.enregistrer({
+      userId: agentId,
+      action: 'suppression_ecriture',
+      ressourceType: 'ep703_recette',
+      ressourceId: id,
+      details: {
+        numeroBordereau: recette.numeroBordereau,
+        libelle: recette.libelle,
+        montant: Number(recette.montant),
+      },
+    });
+    return { id };
+  }
+
   // ---- EP704 : Dépenses ----
 
   async createDepense(dto: CreateDepenseDto, agentId: string) {
@@ -157,6 +176,25 @@ export class AccountingService {
       details: { montant: Number(depense.montant) },
     });
     return misAJour;
+  }
+
+  /** Suppression définitive d'une écriture de dépense (administrateur). */
+  async supprimerDepense(id: string, agentId: string) {
+    const depense = await this.prisma.ecritureDepense.findUnique({ where: { id } });
+    if (!depense) throw new NotFoundException(`Écriture dépense ${id} introuvable`);
+    await this.prisma.ecritureDepense.delete({ where: { id } });
+    await this.auditService.enregistrer({
+      userId: agentId,
+      action: 'suppression_ecriture',
+      ressourceType: 'ep704_depense',
+      ressourceId: id,
+      details: {
+        numeroOperation: depense.numeroOperation,
+        libelle: depense.libelle,
+        montant: Number(depense.montant),
+      },
+    });
+    return { id };
   }
 
   // ---- Opération de caisse (Bon de caisse papier : entrée ou sortie) ----

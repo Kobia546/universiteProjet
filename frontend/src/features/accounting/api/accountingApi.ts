@@ -107,3 +107,11 @@ export async function fetchEp706(params?: {
   const { data } = await apiClient.get<Centralisateur>('/ep706', { params });
   return data;
 }
+
+export async function supprimerRecette(id: string): Promise<void> {
+  await apiClient.delete(`/ep703/${id}`);
+}
+
+export async function supprimerDepense(id: string): Promise<void> {
+  await apiClient.delete(`/ep704/${id}`);
+}

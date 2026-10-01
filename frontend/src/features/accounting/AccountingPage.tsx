@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, FileDown } from 'lucide-react';
+import { Pagination } from '../../shared/components/ui/Pagination';
+import { ConfirmDialog } from '../../shared/components/ui/ConfirmDialog';
+import { usePagination } from '../../shared/hooks/usePagination';
+import { useEstAdmin } from '../../shared/hooks/useEstAdmin';
+import { messageErreur } from '../../shared/lib/erreurs';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
 import { Card } from '../../shared/components/ui/Card';
 import { Badge } from '../../shared/components/ui/Badge';
@@ -12,6 +17,8 @@ import {
   fetchEp706,
   contrePasserRecette,
   contrePasserDepense,
+  supprimerRecette,
+  supprimerDepense,
   creerOperationCaisse,
   type TypeOperationCaisse,
   type TypePaiementOperation,
@@ -351,6 +358,17 @@ function RecettesTab() {
       queryClient.invalidateQueries({ queryKey: ['ep706'] });
     },
   });
+  const estAdmin = useEstAdmin();
+  const [aSupprimer, setASupprimer] = useState<{ id: string; numero: string } | null>(null);
+  const suppressionMutation = useMutation({
+    mutationFn: supprimerRecette,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ep703'] });
+      queryClient.invalidateQueries({ queryKey: ['ep706'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      setASupprimer(null);
+    },
+  });
 
   const recettesFiltrees = (recettes ?? []).filter((r) => {
     const correspondLibelle = rechercheLibelle
@@ -359,6 +377,8 @@ function RecettesTab() {
     const correspondDate = rechercheDate ? r.date.slice(0, 10) === rechercheDate : true;
     return correspondLibelle && correspondDate;
   });
+
+  const page = usePagination(recettesFiltrees, `${rechercheLibelle}|${rechercheDate}`);
 
   function ouvrirApercu() {
     if (recettesFiltrees.length === 0) return;
@@ -457,7 +477,7 @@ function RecettesTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {recettesFiltrees.map((r) => (
+            {page.pageItems.map((r) => (
               <tr key={r.id}>
                 <td className="px-5 py-3 font-mono text-xs text-slate-600">{r.numeroBordereau}</td>
                 <td className="px-5 py-3 text-slate-500">{formatDate(r.date)}</td>
@@ -470,20 +490,43 @@ function RecettesTab() {
                   <Badge variant={r.statut === 'VALIDE' ? 'success' : 'default'}>{r.statut}</Badge>
                 </td>
                 <td className="px-5 py-3">
-                  {r.statut === 'VALIDE' && (
-                    <button
-                      onClick={() => contrePasserMutation.mutate(r.id)}
-                      className="text-xs text-red-600 underline"
-                    >
-                      Contre-passer
-                    </button>
-                  )}
+                  <div className="flex gap-3 whitespace-nowrap">
+                    {r.statut === 'VALIDE' && (
+                      <button
+                        onClick={() => contrePasserMutation.mutate(r.id)}
+                        className="text-xs text-red-600 underline"
+                      >
+                        Contre-passer
+                      </button>
+                    )}
+                    {estAdmin && (
+                      <button
+                        onClick={() => setASupprimer({ id: r.id, numero: r.numeroBordereau })}
+                        className="text-xs text-slate-500 underline hover:text-red-600"
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table></div>
       )}
+      <div className="px-5 pb-4">
+        <Pagination p={page} />
+      </div>
+
+      <ConfirmDialog
+        open={!!aSupprimer}
+        titre="Supprimer cette écriture ?"
+        message={<>L'écriture {aSupprimer?.numero} sera supprimée définitivement du registre EP703. Pour garder une trace, préférez la contre-passation.</>}
+        isLoading={suppressionMutation.isPending}
+        error={suppressionMutation.isError ? messageErreur(suppressionMutation.error) : null}
+        onConfirm={() => aSupprimer && suppressionMutation.mutate(aSupprimer.id)}
+        onCancel={() => setASupprimer(null)}
+      />
 
       <ExportPreviewModal
         data={apercu}
@@ -514,6 +557,17 @@ function DepensesTab() {
       queryClient.invalidateQueries({ queryKey: ['ep706'] });
     },
   });
+  const estAdmin = useEstAdmin();
+  const [aSupprimer, setASupprimer] = useState<{ id: string; numero: string } | null>(null);
+  const suppressionMutation = useMutation({
+    mutationFn: supprimerDepense,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ep704'] });
+      queryClient.invalidateQueries({ queryKey: ['ep706'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      setASupprimer(null);
+    },
+  });
 
   const depensesFiltrees = (depenses ?? []).filter((d) => {
     const correspondLibelle = rechercheLibelle
@@ -522,6 +576,8 @@ function DepensesTab() {
     const correspondDate = rechercheDate ? d.date.slice(0, 10) === rechercheDate : true;
     return correspondLibelle && correspondDate;
   });
+
+  const page = usePagination(depensesFiltrees, `${rechercheLibelle}|${rechercheDate}`);
 
   function ouvrirApercu() {
     if (depensesFiltrees.length === 0) return;
@@ -621,7 +677,7 @@ function DepensesTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {depensesFiltrees.map((d) => (
+              {page.pageItems.map((d) => (
                 <tr key={d.id}>
                   <td className="px-5 py-3 font-mono text-xs text-slate-600">{d.numeroOperation}</td>
                   <td className="px-5 py-3 text-slate-500">{formatDate(d.date)}</td>
@@ -631,21 +687,44 @@ function DepensesTab() {
                     <Badge variant={d.statut === 'VALIDE' ? 'success' : 'default'}>{d.statut}</Badge>
                   </td>
                   <td className="px-5 py-3">
-                    {d.statut === 'VALIDE' && (
-                      <button
-                        onClick={() => contrePasserMutation.mutate(d.id)}
-                        className="text-xs text-red-600 underline"
-                      >
-                        Contre-passer
-                      </button>
-                    )}
+                    <div className="flex gap-3 whitespace-nowrap">
+                      {d.statut === 'VALIDE' && (
+                        <button
+                          onClick={() => contrePasserMutation.mutate(d.id)}
+                          className="text-xs text-red-600 underline"
+                        >
+                          Contre-passer
+                        </button>
+                      )}
+                      {estAdmin && (
+                        <button
+                          onClick={() => setASupprimer({ id: d.id, numero: d.numeroOperation })}
+                          className="text-xs text-slate-500 underline hover:text-red-600"
+                        >
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table></div>
         )}
+        <div className="px-5 pb-4">
+          <Pagination p={page} />
+        </div>
       </Card>
+
+      <ConfirmDialog
+        open={!!aSupprimer}
+        titre="Supprimer cette écriture ?"
+        message={<>L'écriture {aSupprimer?.numero} sera supprimée définitivement du registre EP704. Pour garder une trace, préférez la contre-passation.</>}
+        isLoading={suppressionMutation.isPending}
+        error={suppressionMutation.isError ? messageErreur(suppressionMutation.error) : null}
+        onConfirm={() => aSupprimer && suppressionMutation.mutate(aSupprimer.id)}
+        onCancel={() => setASupprimer(null)}
+      />
 
       <ExportPreviewModal
         data={apercu}

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ModuleCode } from '@prisma/client';
 import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -33,5 +33,10 @@ export class UsersController {
     @CurrentUser() currentUser: { userId: string },
   ) {
     return this.usersService.setActif(id, actif, currentUser.userId);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() currentUser: { userId: string }) {
+    return this.usersService.remove(id, currentUser.userId);
   }
 }

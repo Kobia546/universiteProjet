@@ -76,4 +76,33 @@ export class UsersService {
 
     return this.prisma.user.update({ where: { id }, data: { actif }, select: SELECTION_PUBLIQUE });
   }
+
+  /**
+   * Suppression définitive d'un compte. Refusée pour soi-même, et pour un
+   * compte qui a déjà une activité (inscriptions, paiements, écritures,
+   * journal d'audit) : dans ce cas, le désactiver à la place pour conserver
+   * l'historique.
+   */
+  async remove(id: string, currentUserId: string) {
+    if (id === currentUserId) {
+      throw new BadRequestException('Vous ne pouvez pas supprimer votre propre compte.');
+    }
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException(`Utilisateur ${id} introuvable`);
+
+    const [inscriptions, paiements, recettes, depenses, audits] = await Promise.all([
+      this.prisma.inscription.count({ where: { agentId: id } }),
+      this.prisma.paiement.count({ where: { agentId: id } }),
+      this.prisma.ecritureRecette.count({ where: { agentId: id } }),
+      this.prisma.ecritureDepense.count({ where: { agentId: id } }),
+      this.prisma.auditLog.count({ where: { userId: id } }),
+    ]);
+    if (inscriptions + paiements + recettes + depenses + audits > 0) {
+      throw new BadRequestException(
+        'Ce compte a déjà une activité enregistrée : désactivez-le plutôt que de le supprimer, pour conserver l\'historique.',
+      );
+    }
+    await this.prisma.user.delete({ where: { id } });
+    return { id };
+  }
 }

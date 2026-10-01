@@ -45,3 +45,7 @@ export async function setUserActif(id: string, actif: boolean): Promise<AppUser>
   const { data } = await apiClient.patch<AppUser>(`/users/${id}/actif`, { actif });
   return data;
 }
+
+export async function deleteUser(id: string): Promise<void> {
+  await apiClient.delete(`/users/${id}`);
+}
